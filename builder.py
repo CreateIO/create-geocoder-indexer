@@ -147,6 +147,7 @@ def set_address_mapping():
             "properties": {
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
+                "alt_core_address": { "type": "string" },
                 "address_number": { "type": "integer" },
                 "city": { "type": "string" },
                 "state": { "type": "string" },
@@ -173,6 +174,16 @@ def core_address(address):
     
     return address
     
+def alt_core_address(address):
+    # strip leading  Directionality
+    #address = re.sub(r'^NORTH ',  '',  address)
+    address = re.sub(r' EYE ',  ' I ',  address)
+    
+    # strip tailing Quadrant data
+    address = re.sub(r' (NE|NW|SE|SW)$',  '',  address)
+    
+    return address
+
 def main_loop():
 
     drop_index('geodc/address')
@@ -193,6 +204,7 @@ def main_loop():
             address = {"id": data[0].strip(), 
                 "complete_address": data[1],
                 "core_address": core_address(data[1]), 
+                "alt_core_address": alt_core_address(data[1]), 
                 "city": data[2],
                 "state": data[3],
                 "zipcode": data[4],
