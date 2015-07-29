@@ -1,0 +1,8 @@
+lxml==3.3.6
+psycopg2>=2.5.1
+pylint
+simplejson
+datetime
+boto
+s3cmd
+awscli
