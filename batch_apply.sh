@@ -7,6 +7,10 @@ if [ -z "$ES_Index" ]; then
     exit
 fi
 
+if [ -d "data" ]; then
+    cd data
+fi
+
 #scan for idxname
 idxname=`head -n 1 batch_pre.sh | cut -d'=' -f2`
 
@@ -14,10 +18,6 @@ if [ "$ES_Index" != "$idxname" ]; then
     echo "Fatal Error"
     echo "batch index files were built for $idxname, but we are attempting to apply them to $ES_Index"
     exit
-fi
-
-if [ -r "data" ]; then
-    cd data
 fi
 
 bash batch_pre.sh
