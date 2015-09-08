@@ -18,6 +18,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
 # set the index name to build
 # we use an alias to connect the index to the webserver
 IDXNAME = os.environ.get('ES_Index','geodc_qx')
+OutputDir="./data/"
 
 RUNLIVE = False
 BATCH =  cStringIO.StringIO()
@@ -441,6 +442,14 @@ def core_address(address):
 def alt_address(address, force): 
     # custom DC rules go here
     new_address = re.sub(r' EYE ',  ' I ',  address)
+    if ( new_address == address):
+        new_address = re.sub(r' I ',  ' EYE ',  address)
+    if ( new_address == address):
+        new_address = re.sub(r' MASSACHUSETTS ',  ' MASS ',  address)
+    if ( new_address == address):
+        new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address) 
+    if ( new_address == address):
+        new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)        
     
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
@@ -725,6 +734,9 @@ def index_submarket_residential(prm):
     pass
 
 def main_loop():
+    
+    if (not os.path.isdir(OutputDir) ):
+        os.mkdir(OutputDir)
     index_addresses({"reset": True})
     index_neighborhoods({"reset": True})
     index_submarket_commercial({"reset": True})
@@ -734,13 +746,13 @@ def main_loop():
 
     if (RUNLIVE == False):
         BATCH_PRE.reset()
-        with  open("batch_pre.sh",  "wb+") as bfile:
+        with  open(OutputDir + "batch_pre.sh",  "wb+") as bfile:
             bfile.write("#ES_Index=%s\n"% (IDXNAME))
             bfile.write(BATCH_PRE.getvalue())
         BATCH_PRE.close()
 
         BATCH.reset()
-        with  open("batch.json",  "wb+") as bfile:
+        with  open( OutputDir + "batch.json",  "wb+") as bfile:
             bfile.write(BATCH.getvalue())
         BATCH.close()
     pass
