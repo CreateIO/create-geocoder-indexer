@@ -450,7 +450,14 @@ def alt_address(address, force):
         new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address) 
     if ( new_address == address):
         new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)        
-    
+    if ( new_address == address):
+        new_address = re.sub(r' MASSACHEUSETTS ',  ' MASS ',  address)
+    if ( new_address == address):
+        new_address = re.sub(r' NEW YORK ',  ' NY ',  address)   
+
+    if ( new_address == address):
+        new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)   
+        
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
     if (test_address == new_address):
