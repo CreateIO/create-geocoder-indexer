@@ -47,7 +47,7 @@ curl -XPOST 'http://localhost:9200/_aliases' -d '
     ]
 }'
 
-curl -XPOST 'http://localhost:9200/_aliases'
+curl -XGET 'http://localhost:9200/_aliases'
 
 exit
 
