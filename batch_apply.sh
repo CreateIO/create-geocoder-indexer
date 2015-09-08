@@ -1,6 +1,22 @@
 #!/bin/bash
 
-bash batch_pre.json
+if [ -z "$ES_Index" ]; then
+    echo "usage:   batch_apply.sh"
+    echo "    set the ENV var ES_Index before running this script"
+    echo "    see load_env.sh for one way to do this"
+    exit
+fi
+
+#scan for idxname
+idxname=`head -n 1 batch_pre.sh | cut -d'=' -f2`
+
+if [ "$ES_Index" != "$idxname" ]; then
+    echo "Fatal Error"
+    echo "batch index files were built for $idxname, but we are attempting to apply them to $ES_Index"
+    exit
+fi
+
+bash batch_pre.sh
 
 if [ ! -r tmp ]; then
   mkdir tmp
@@ -19,10 +35,14 @@ done
 curl -XPOST 'http://localhost:9200/_aliases' -d '
 {
     "actions" : [
-        { "remove" : { "index" : "geodc_b", "alias" : "gdc" } },
-        { "add" : { "index" : "geodc_b", "alias" : "gdc" } }
+        { "remove" : { "index" : "'$ES_Index'", "alias" : "gdc" } },
+        { "add" : { "index" : "'$ES_Index'", "alias" : "gdc" } }
     ]
 }'
+
+curl -XPOST 'http://localhost:9200/_aliases'
+
+exit
 
 curl -XPOST 'http://localhost:9200/_aliases' -d '
 {

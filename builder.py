@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.DEBUG)
 
 ## elasticsearch uses lowercased names
-IDXNAME = "geodc_b"
+# set the index name to build
+# we use an alias to connect the index to the webserver
+IDXNAME = os.environ.get('ES_Index','geodc_qx')
+
 RUNLIVE = False
 BATCH =  cStringIO.StringIO()
 BATCH_PRE = cStringIO.StringIO()
@@ -731,7 +734,8 @@ def main_loop():
 
     if (RUNLIVE == False):
         BATCH_PRE.reset()
-        with  open("batch_pre.json",  "wb+") as bfile:
+        with  open("batch_pre.sh",  "wb+") as bfile:
+            bfile.write("#ES_Index=%s\n"% (IDXNAME))
             bfile.write(BATCH_PRE.getvalue())
         BATCH_PRE.close()
 
