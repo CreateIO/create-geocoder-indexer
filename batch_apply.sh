@@ -7,6 +7,9 @@ if [ -z "$ES_Index" ]; then
     exit
 fi
 
+echo "Starting to apply ElasticSearch Index $ES_Index"
+echo ""
+
 if [ -d "data" ]; then
     cd data
 fi
