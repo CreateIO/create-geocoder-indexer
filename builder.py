@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.DEBUG)
 
 ## elasticsearch uses lowercased names
-IDXNAME = "geodc_a"
+IDXNAME = "geodc_b"
 RUNLIVE = False
 BATCH =  cStringIO.StringIO()
 BATCH_PRE = cStringIO.StringIO()
@@ -468,21 +468,44 @@ def index_landmarks(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT addralias_id::TEXT, aliasname as name,
-            city, state, zipcode,
-            'DCMAR'::TEXT as domain, 0 as normative,  
-            status,
-            aliastype,
-            ssl,
+        cursor.execute("""CREATE TEMP TABLE addr_alias_fronts as (
+            SELECT a.address_id, a.fulladdress, 
+                coalesce(b.front_vect,'{}')::TEXT as front_vect,                
+                b.property_id, b.parcel_id,
+                a.addralias_id,
+                a.aliasname,
+                a.city,
+                a.state,
+                a.zipcode,
+                a.status,
+                a.aliastype,
+                a.ssl,
+                a.geometry
+                FROM 
+                    temp.location_alias a LEFT OUTER JOIN development.properties b 
+                    ON (a.ssl = b.local_id)
+        )""")
+        cursor.execute("""SELECT a.addralias_id::TEXT, 
+            a.aliasname as name,
+            a.city, 
+            a.state, 
+            a.zipcode,
+            'DCMAR'::TEXT as domain, 
+            0 as normative,  
+            a.status,
+            a.aliastype,
+            a.ssl,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(a.geometry) as location,
-            a.fulladdress as proper_address
+            a.fulladdress as proper_address,
+            a.front_vect
             FROM
-                temp.location_alias a""")
+                addr_alias_fronts a
+                """)
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(),
-                "proper_address": data[11] + ", " + data[1],            
+                "proper_address": data[1],            
                 "complete_address": data[1],
                 "core_address": core_address(data[1]), 
                 "super_core_address": super_core_address(data[1]), 
@@ -497,8 +520,14 @@ def index_landmarks(prm):
                 "local_id": data[9], 
                 "extentBBOX": json.loads(data[10]), 
                 "location": json.loads(data[10]), 
+                "front_vect": json.loads(data[13]), 
                 "camera": {}
             }
+            if (data[12] > ''):
+                address['proper_address'] = data[12] + ', ' + address['proper_address']
+            if ( "front_vect" in address and not ("coordinates" in  address['front_vect'])):
+                del address['front_vect'];
+
             send_address(address,  'landmark')
             if (cntr % 5000) == 0:
                 time.sleep(0)
@@ -530,6 +559,7 @@ def index_neighborhoods(prm):
                 "complete_address": data[1],
                 "city": data[2],
                 "state": data[3],
+                "zipcode": "(Neighborhood)", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "class": data[6],
@@ -637,6 +667,7 @@ def index_submarket_commercial(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),         
                 "city": data[2],
                 "state": data[3],
+                "zipcode": "(Commercial Submarket)", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -676,6 +707,7 @@ def index_submarket_residential(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),                          
                 "city": data[2],
                 "state": data[3],
+                "zipcode": "(Residential Submarket)", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
