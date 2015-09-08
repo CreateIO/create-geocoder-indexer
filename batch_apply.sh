@@ -16,6 +16,10 @@ if [ "$ES_Index" != "$idxname" ]; then
     exit
 fi
 
+if [ -r "data" ]; then
+    cd data
+fi
+
 bash batch_pre.sh
 
 if [ ! -r tmp ]; then
