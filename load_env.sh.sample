@@ -1,0 +1,24 @@
+#!/bin/bash
+
+export CREATE_DB_USER=<INTAKE DB USER>
+export CREATE_DB_PASS=<INTAKE DB PASSWORD>
+export DB_NAME=<INTAKE DB>
+export CREATE_DB_SCHEMA=<INTAKE DB publication schema>
+
+export DBHOST=localhost
+
+export PGUSER="$CREATE_DB_USER"
+export PGPASSWORD="$CREATE_DB_PASS"
+
+export CPL_DEBUG=ON
+
+export ES_Index=<ElasticSearch Index Name>
+
+workDir=`dirname "$0"`
+thisDir=`pwd`
+cd $workDir
+workDir=`pwd`
+cd "${thisDir}"
+
+export PYTHONPATH="${workDir}"
+
