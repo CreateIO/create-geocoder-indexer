@@ -338,6 +338,13 @@ def number_cardinal(address):
     address = re.sub(r' TWELFTH ',  ' 12TH ',  address)
     address = re.sub(r' THIRTEENTH ',  ' 13TH ',  address)
     address = re.sub(r' FOURTEENTH ',  ' 14TH ',  address)
+    address = re.sub(r' FIFTEENTH ',  ' 15TH ',  address)
+    address = re.sub(r' SIXTEENTH ',  ' 16TH ',  address)
+    address = re.sub(r' SEVENEENTH ',  ' 17TH ',  address)
+    address = re.sub(r' EIGTHTEENTH ',  ' 18TH ',  address)
+    address = re.sub(r' NINTEENTH ',  ' 19TH ',  address)
+    address = re.sub(r' TWENTIETH ',  ' 20TH ',  address)
+    address = re.sub(r' TWENTY FIRST ',  ' 24TH ',  address)
 
     return address
 
@@ -352,11 +359,18 @@ def cardinal_number(address):
     address = re.sub(r' 7TH ',  ' SEVENTH ',  address)
     address = re.sub(r' 8TH ',  ' EIGHTH ',  address)
     address = re.sub(r' 9TH ',  ' NINTH ',  address)
-    address = re.sub(r' 10TH ',  ' TENTH ',  address)
-    address = re.sub(r' 11TH ',  ' ELEVENTH ',  address)
-    address = re.sub(r' 12TH ',  ' TWELFTH ',  address)
-    address = re.sub(r' 13TH ',  ' THIRTEENTH ',  address)
-    address = re.sub(r' 14TH ',  ' FOURTEENTH ',  address)
+    address = re.sub(r' 10TH ', ' TENTH ',  address)
+    address = re.sub(r' 11TH ', ' ELEVENTH ',  address)
+    address = re.sub(r' 12TH ', ' TWELFTH ',  address)
+    address = re.sub(r' 13TH ', ' THIRTEENTH ',  address)
+    address = re.sub(r' 14TH ', ' FOURTEENTH ',  address)
+    address = re.sub(r' 15TH ', ' FIFTEENTH ',  address)
+    address = re.sub(r' 16TH ',  ' SIXTEENTH ',  address)
+    address = re.sub(r' 17TH ',  ' SEVENEENTH ',  address)
+    address = re.sub(r' 18TH ',  ' EIGTHTEENTH ',  address)
+    address = re.sub(r' 19TH ',  ' NINTEENTH ',  address)
+    address = re.sub(r' 20TH ',  ' TWENTIETH ',  address)
+    address = re.sub(r' 24TH ',  ' TWENTY FIRST ',  address)
 
     return address
 
@@ -386,6 +400,7 @@ def strip_type(address):
     address = re.sub(r' ROW',  ' ',  address)
     address = re.sub(r' FREEWAY',  ' ',  address)
     address = re.sub(r' BRIDGE',  ' ',  address)
+    address = re.sub(r' SQUARE',  ' ',  address)
 
     return address
 
@@ -415,6 +430,7 @@ def abbr_Type(address):
     address = re.sub(r' ROW',  ' RW',  address)
     address = re.sub(r' FREEWAY',  ' FWY FY',  address)
     address = re.sub(r' BRIDGE',  ' BR',  address)
+    address = re.sub(r' SQUARE',  ' SQ',  address)
 
     return address
 
@@ -536,6 +552,7 @@ def alt_core_address(address):
 
 def index_landmarks(prm):
 
+    logger.debug('''  Start index_landmarks''')
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, 'landmark')
         set_landmark_mapping('landmark')
@@ -619,6 +636,7 @@ def index_landmarks(prm):
 
 def index_neighborhoods(prm):
 
+    logger.debug('''  Start index_neighborhoods''')
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,'neighborhood')
         set_neighborhood_mapping('neighborhood')
@@ -631,7 +649,7 @@ def index_neighborhoods(prm):
             'DCZ'::TEXT as domain, 0 as normative,  
             'G' as class,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
-            st_asgeojson(st_pointonsurface(a.geometry)) as location,
+            st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
                 temp.nbhd a""")
@@ -694,6 +712,7 @@ def submit_address(data):
 
 def index_addresses(prm):
 
+    logger.debug('''  Start index_address''')
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, 'address')
         set_address_mapping('address')
@@ -778,6 +797,7 @@ def index_addresses(prm):
 
 def index_submarket_commercial(prm):
 
+    logger.debug('''  Start index_submarket_commercial''')
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,'SMC')
         set_submarket_C_mapping('SMC')
@@ -789,7 +809,7 @@ def index_submarket_commercial(prm):
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,  
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
-            st_asgeojson(st_pointonsurface(a.geometry)) as location,
+            st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
                 temp.submarket_commercial_nbhd a""")
@@ -820,6 +840,7 @@ def index_submarket_commercial(prm):
 
 def index_submarket_residential(prm):
 
+    logger.debug('''  Start index_submarket_residential''')
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,'SMR')
         set_submarket_R_mapping('SMR')
