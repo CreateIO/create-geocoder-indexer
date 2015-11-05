@@ -18,7 +18,7 @@ Scripts to build the geocoder index
 ### run the indexer
 * run venv/bin/python builder.py
 
-### apply the builk load
+### apply the bulk load
 * bash batch_apply.sh
 
 

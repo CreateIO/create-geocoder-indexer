@@ -6,3 +6,4 @@ datetime
 boto
 s3cmd
 awscli
+pycurl

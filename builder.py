@@ -17,7 +17,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
 ## elasticsearch uses lowercased names
 # set the index name to build
 # we use an alias to connect the index to the webserver
-IDXNAME = os.environ.get('ES_Index','geodc_qx')
+IDXNAME = os.environ.get('ES_Index','geodc_qt')
 OutputDir="./data/"
 
 RUNLIVE = False
@@ -604,7 +604,7 @@ def index_landmarks(prm):
                     "complete_address": address_entry,
                     "core_address": core_address(address_entry), 
                     "super_core_address": super_core_address(address_entry), 
-                    "alt_core_address": alt_address(super_core_address(address_entry), False), 
+                    "alt_core_address": alt_address(super_core_address(address_entry), True), 
                     "city": data[2],
                     "state": data[3],
                     "zipcode": data[4], 
@@ -688,7 +688,7 @@ def submit_address(data):
             "complete_address": address_entry,
             "core_address": core_address(address_entry), 
             "super_core_address": super_core_address(address_entry), 
-            "alt_core_address": alt_address(super_core_address(address_entry), False),
+            "alt_core_address": alt_address(super_core_address(address_entry), True),
             "city": data[2],
             "state": data[3],
             "zipcode": data[4],
@@ -740,7 +740,7 @@ def index_addresses(prm):
         # filter by those not already in the address file
         cursor.execute("""CREATE TEMP TABLE owner_point_temp as (
             SELECT p.local_id, 
-                CASE
+                trim(CASE
                     WHEN p.property_address like '% ST %' THEN replace (p.property_address, ' ST ', ' STREET ')
                     WHEN p.property_address like '% AV %' THEN replace (p.property_address, ' AV ', ' AVENUE ')
                     WHEN p.property_address like '% RD %' THEN replace (p.property_address, ' RD ', ' ROAD ')
@@ -750,13 +750,32 @@ def index_addresses(prm):
                     WHEN p.property_address like '% TR %' THEN replace (p.property_address, ' TR ', ' TERRACE ')
                     WHEN p.property_address like '% PLZ %' THEN replace (p.property_address, ' PLZ ', ' PLAZA ')
                     WHEN p.property_address like '% PL %' THEN replace (p.property_address, ' PL ', ' PLACE ')
+                    WHEN p.property_address like '% PL %' THEN replace (p.property_address, ' SQ ', ' SQUARE ')
+                    WHEN p.property_address like '% PL %' THEN replace (p.property_address, 'WLK ', ' WALK ')
+                    WHEN p.property_address like '% PL %' THEN replace (p.property_address, ' PLZ ', ' PLAZA ')
                     ELSE p.property_address
-                    END as property_address,
-                p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect
-                FROM development.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
-                WHERE
-                    a.local_id is NULL and trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+'
+                    END) as property_address,
+                p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
+                FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
+                        p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
+                    FROM test.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                        WHERE
+                            a.local_id is NULL and
+                            trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
             )""")
+
+        cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' Unit: .*', '')
+            WHERE  (property_address ~* ' UNIT: ')
+            """)
+        cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' (NE|NW|SE|SW) .*', '')
+            WHERE  (property_address ~ ' (NE|NW|SE|SW) ')
+            """)
+        cursor.execute("""UPDATE owner_point_temp SET property_address = property_address || ' ' || property_quadrant
+            WHERE not (property_address ~ ' (NE|NW|SE|SW)$' or property_address ~ ' (NE|NW|SE|SW) ')
+            """)
+        cursor.execute("""DELETE FROM owner_point_temp  o
+            WHERE exists (SELECT 1 FROM temp.address_points a WHERE o.property_address = a.fulladdress)
+            """)
 
         cursor.execute("""CREATE TEMP TABLE address_list_words as (
             SELECT local_id, (regexp_matches(fulladdress, '[^ ]* [^ ]*'))[1] as words FROM address_list_temp)
