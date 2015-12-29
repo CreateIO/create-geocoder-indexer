@@ -322,6 +322,60 @@ def set_submarket_R_mapping(mapname):
     send_mapping(mapping,  mapname)
     return mapping
 
+def set_postalcode_mapping(mapname):
+    map_str = '''{ "mappings": {
+        "%s": {
+            "properties": {
+                "complete_address": { "type": "string" },
+                "core_address": { "type": "string" },
+                "super_core_address": { "type": "string" },
+                "alt_core_address": { "type": "string" },                
+                "city": { "type": "string" },
+                "state": { "type": "string" }
+                }
+            }
+        }
+    }'''    % (mapname)
+    mapping = json.loads(map_str)
+    send_mapping(mapping,  mapname)
+    return mapping
+
+def set_quadrant_mapping(mapname):
+    map_str = '''{ "mappings": {
+        "%s": {
+            "properties": {
+                "complete_address": { "type": "string" },
+                "core_address": { "type": "string" },
+                "super_core_address": { "type": "string" },
+                "alt_core_address": { "type": "string" },                
+                "city": { "type": "string" },
+                "state": { "type": "string" }
+                }
+            }
+        }
+    }'''    % (mapname)
+    mapping = json.loads(map_str)
+    send_mapping(mapping,  mapname)
+    return mapping
+
+def set_market_mapping(mapname):
+    map_str = '''{ "mappings": {
+        "%s": {
+            "properties": {
+                "complete_address": { "type": "string" },
+                "core_address": { "type": "string" },
+                "super_core_address": { "type": "string" },
+                "alt_core_address": { "type": "string" },                
+                "city": { "type": "string" },
+                "state": { "type": "string" }
+                }
+            }
+        }
+    }'''    % (mapname)
+    mapping = json.loads(map_str)
+    send_mapping(mapping,  mapname)
+    return mapping
+
 def number_cardinal(address):
     # convert from first to 1st and visa versa
     address = re.sub(r' FIRST ',  ' 1ST ',  address)
@@ -712,10 +766,15 @@ def submit_address(data):
 
 def index_addresses(prm):
 
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
     logger.debug('''  Start index_address''')
     if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME, 'address')
-        set_address_mapping('address')
+        drop_index(IDXNAME, typeName)
+        set_address_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
@@ -807,7 +866,7 @@ def index_addresses(prm):
         cursor.execute("""SELECT * FROM address_list_temp""")
         result = cursor.fetchall()
         for data in result:
-            submit_address(data)
+            submit_address(data,  typeName)
 
             if (cntr % 5000) == 0:
                 time.sleep(0)
@@ -816,10 +875,15 @@ def index_addresses(prm):
 
 def index_submarket_commercial(prm):
 
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
     logger.debug('''  Start index_submarket_commercial''')
     if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME,'SMC')
-        set_submarket_C_mapping('SMC')
+        drop_index(IDXNAME,typeName)
+        set_submarket_C_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
@@ -850,7 +914,7 @@ def index_submarket_commercial(prm):
                 "camera": {}, 
                 "geometry": json.loads(data[8])
             }
-            send_address(address,  'SMC')
+            send_address(address,  typeName)
             if (cntr % 5000) == 0:
                 time.sleep(0)
             cntr += 1
@@ -859,10 +923,15 @@ def index_submarket_commercial(prm):
 
 def index_submarket_residential(prm):
 
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
     logger.debug('''  Start index_submarket_residential''')
     if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME,'SMR')
-        set_submarket_R_mapping('SMR')
+        drop_index(IDXNAME, typeName)
+        set_submarket_R_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
@@ -893,7 +962,151 @@ def index_submarket_residential(prm):
                 "camera": {}, 
                 "geometry": json.loads(data[8])
             }
-            send_address(address,  'SMR')
+            send_address(address, typeName)
+            if (cntr % 5000) == 0:
+                time.sleep(0)
+            cntr += 1
+
+    pass
+
+def index_postalcode(prm):
+
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
+    logger.debug('''  Start index_submarket_residential''')
+    if 'reset' in prm and prm and prm['reset'] == True:
+        drop_index(IDXNAME, typeName)
+        set_postalcode_mapping(typeName)
+
+    cntr = 1
+    with db_cursor() as cursor:
+        cursor.execute("""SELECT objectid::TEXT, name,
+            'WASHINGTON' as city,
+            'DC' as state,
+            'create.io'::TEXT as domain, 0 as normative,  
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(st_pointonsurface(a.geometry)) as location,
+            st_asgeojson(a.geometry) as geometry
+            FROM
+                temp.submarket_residential_nbhd a""")
+        result = cursor.fetchall()
+        for data in result:
+            address = {"id": data[0].strip(), 
+                "proper_address": data[1],
+                "complete_address": data[1],
+                "core_address": core_address(data[1]), 
+                "super_core_address": super_core_address(data[1]), 
+                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "city": data[2],
+                "state": data[3],
+                "zipcode": "(Residential Submarket)", 
+                "domain": data[4],
+                "normative": int(data[5]),
+                "extentBBOX": json.loads(data[6]), 
+                "location": json.loads(data[7]), 
+                "camera": {}, 
+                "geometry": json.loads(data[8])
+            }
+            send_address(address,  typeName)
+            if (cntr % 5000) == 0:
+                time.sleep(0)
+            cntr += 1
+
+    pass
+
+def index_market(prm):
+
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
+    logger.debug('''  Start index_submarket_residential''')
+    if 'reset' in prm and prm and prm['reset'] == True:
+        drop_index(IDXNAME, typeName)
+        set_market_mapping(typeName)
+
+    cntr = 1
+    with db_cursor() as cursor:
+        cursor.execute("""SELECT objectid::TEXT, name,
+            'WASHINGTON' as city,
+            'DC' as state,
+            'create.io'::TEXT as domain, 0 as normative,  
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(st_pointonsurface(a.geometry)) as location,
+            st_asgeojson(a.geometry) as geometry
+            FROM
+                temp.submarket_residential_nbhd a""")
+        result = cursor.fetchall()
+        for data in result:
+            address = {"id": data[0].strip(), 
+                "proper_address": data[1],
+                "complete_address": data[1],
+                "core_address": core_address(data[1]), 
+                "super_core_address": super_core_address(data[1]), 
+                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "city": data[2],
+                "state": data[3],
+                "zipcode": "(Residential Submarket)", 
+                "domain": data[4],
+                "normative": int(data[5]),
+                "extentBBOX": json.loads(data[6]), 
+                "location": json.loads(data[7]), 
+                "camera": {}, 
+                "geometry": json.loads(data[8])
+            }
+            send_address(address,  typeName)
+            if (cntr % 5000) == 0:
+                time.sleep(0)
+            cntr += 1
+
+    pass
+
+def index_quadrant(prm):
+
+    if 'type' in prm:
+        typeName = prm['type']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+        
+    logger.debug('''  Start index_submarket_residential''')
+    if 'reset' in prm and prm and prm['reset'] == True:
+        drop_index(IDXNAME,typeName)
+        set_quadrant_mapping(typeName)
+
+    cntr = 1
+    with db_cursor() as cursor:
+        cursor.execute("""SELECT objectid::TEXT, name,
+            'WASHINGTON' as city,
+            'DC' as state,
+            'create.io'::TEXT as domain, 0 as normative,  
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(st_pointonsurface(a.geometry)) as location,
+            st_asgeojson(a.geometry) as geometry
+            FROM
+                temp.submarket_residential_nbhd a""")
+        result = cursor.fetchall()
+        for data in result:
+            address = {"id": data[0].strip(), 
+                "proper_address": data[1],
+                "complete_address": data[1],
+                "core_address": core_address(data[1]), 
+                "super_core_address": super_core_address(data[1]), 
+                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "city": data[2],
+                "state": data[3],
+                "zipcode": "(Residential Submarket)", 
+                "domain": data[4],
+                "normative": int(data[5]),
+                "extentBBOX": json.loads(data[6]), 
+                "location": json.loads(data[7]), 
+                "camera": {}, 
+                "geometry": json.loads(data[8])
+            }
+            send_address(address,  typeName)
             if (cntr % 5000) == 0:
                 time.sleep(0)
             cntr += 1
@@ -904,12 +1117,17 @@ def main_loop():
     
     if (not os.path.isdir(OutputDir) ):
         os.mkdir(OutputDir)
-    index_addresses({"reset": True})
-    index_neighborhoods({"reset": True})
-    index_submarket_commercial({"reset": True})
-    index_submarket_residential({"reset": True})
+    index_addresses({"reset": True, "type": "address"})
+    index_neighborhoods({"reset": True, "type": "nbhd"})
+    index_landmarks({"reset": True, "type": "landmark"})
 
-    index_landmarks({"reset": True})
+    index_submarket_commercial({"reset": True, "type": "SMC"})
+    index_submarket_residential({"reset": True, "type": "SMR"})
+    
+    index_market({"reset": True, "type": "market"})
+    index_postalcode({"reset": True, "type": "postalcode"})
+    index_quadrant({"reset": True, "type": "quadrant"})
+
 
     if (RUNLIVE == False):
         BATCH_PRE.reset()
