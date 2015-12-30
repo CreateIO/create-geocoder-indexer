@@ -161,7 +161,7 @@ curl -XPOST 'http://localhost:9200/%s/%s' -d '%s'\n
 """ % (idx, typ,  json.dumps(data) ))
     pass
 
-def send_action(idx, typ, data):    
+def send_action(idx, typ, data):
     if (RUNLIVE == True):
         send_action_live
     else:
@@ -604,12 +604,51 @@ def alt_core_address(address):
 
     return address
 
+def submit_address(data,  typeName):
+
+    # expand the address to all alternatives (non - alias)
+    alts = alt_addresses(data[1])
+    alt_ctr = 0
+    for address_entry in alts:
+        address = {"id": data[0].strip(), 
+            "proper_address": data[14], 
+            "complete_address": address_entry,
+            "core_address": core_address(address_entry), 
+            "super_core_address": super_core_address(address_entry), 
+            "alt_core_address": alt_address(super_core_address(address_entry), True),
+            "city": data[2],
+            "state": data[3],
+            "zipcode": data[4],
+            "local_id": data[6],
+            "local_desc": data[7], 
+            "addr_use": data[8], 
+            "extentBBOX": json.loads(data[9]), 
+            "location": json.loads(data[10]), 
+            "neighborhood": data[11], 
+            "camera": json.loads(data[12]), 
+            "front_vect": json.loads(data[13])
+        }
+        if data[5] > '':
+            address['address_number'] = int(data[5])
+        if alt_ctr > 0:
+            address['id'] = data[0].strip() + '_%s' % (alt_ctr)        
+        send_address(address,  typeName)
+        
+        alt_ctr += 1
+
+
 def index_landmarks(prm):
 
-    logger.debug('''  Start index_landmarks''')
+    if 'type' in prm:
+        typeName = prm['type']
+        typeDesc = prm['descr']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME, 'landmark')
-        set_landmark_mapping('landmark')
+        drop_index(IDXNAME, typeName)
+        set_landmark_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
@@ -679,7 +718,7 @@ def index_landmarks(prm):
                 if ( "front_vect" in address and not ("coordinates" in  address['front_vect'])):
                     del address['front_vect'];
     
-                send_address(address,  'landmark')
+                send_address(address,  typeName)
                 if (cntr % 5000) == 0:
                     time.sleep(0)
                 cntr += 1
@@ -690,10 +729,16 @@ def index_landmarks(prm):
 
 def index_neighborhoods(prm):
 
-    logger.debug('''  Start index_neighborhoods''')
+    if 'type' in prm:
+        typeName = prm['type']
+        typeDesc = prm['descr']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME,'neighborhood')
-        set_neighborhood_mapping('neighborhood')
+        drop_index(IDXNAME, typeName)
+        set_neighborhood_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
@@ -714,7 +759,7 @@ def index_neighborhoods(prm):
                 "complete_address": data[1],
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Neighborhood)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "class": data[6],
@@ -724,54 +769,22 @@ def index_neighborhoods(prm):
                 "camera": {}, 
                 "geometry": json.loads(data[9])
             }
-            send_address(address,  'neighborhood')
+            send_address(address, typeName)
             if (cntr % 5000) == 0:
                 time.sleep(0)
             cntr += 1
 
     pass
 
-def submit_address(data):
-
-    # expand the address to all alternatives (non - alias)
-    alts = alt_addresses(data[1])
-    alt_ctr = 0
-    for address_entry in alts:
-        address = {"id": data[0].strip(), 
-            "proper_address": data[14], 
-            "complete_address": address_entry,
-            "core_address": core_address(address_entry), 
-            "super_core_address": super_core_address(address_entry), 
-            "alt_core_address": alt_address(super_core_address(address_entry), True),
-            "city": data[2],
-            "state": data[3],
-            "zipcode": data[4],
-            "local_id": data[6],
-            "local_desc": data[7], 
-            "addr_use": data[8], 
-            "extentBBOX": json.loads(data[9]), 
-            "location": json.loads(data[10]), 
-            "neighborhood": data[11], 
-            "camera": json.loads(data[12]), 
-            "front_vect": json.loads(data[13])
-        }
-        if data[5] > '':
-            address['address_number'] = int(data[5])
-        if alt_ctr > 0:
-            address['id'] = data[0].strip() + '_%s' % (alt_ctr)        
-        send_address(address,  'address')
-        
-        alt_ctr += 1
-
-
 def index_addresses(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
   
-    logger.debug('''  Start index_address''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
         set_address_mapping(typeName)
@@ -877,10 +890,11 @@ def index_submarket_commercial(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
   
-    logger.debug('''  Start index_submarket_commercial''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,typeName)
         set_submarket_C_mapping(typeName)
@@ -895,7 +909,7 @@ def index_submarket_commercial(prm):
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.submarket_commercial_nbhd a""")
+                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.submarket_commercial_nbhd)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(),             
@@ -906,7 +920,7 @@ def index_submarket_commercial(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),         
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Commercial Submarket)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -925,10 +939,11 @@ def index_submarket_residential(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
   
-    logger.debug('''  Start index_submarket_residential''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
         set_submarket_R_mapping(typeName)
@@ -943,7 +958,7 @@ def index_submarket_residential(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.submarket_residential_nbhd a""")
+                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.submarket_residential_nbhd)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -954,7 +969,7 @@ def index_submarket_residential(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),                          
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Residential Submarket)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -973,17 +988,19 @@ def index_postalcode(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
   
-    logger.debug('''  Start index_submarket_residential''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
         set_postalcode_mapping(typeName)
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT objectid::TEXT, name,
+        cursor.execute("""SELECT geoid10::TEXT as objectid,
+            azcta5ce10 as name,
             'WASHINGTON' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,  
@@ -991,7 +1008,7 @@ def index_postalcode(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.submarket_residential_nbhd a""")
+                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.census_zcta5)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1002,7 +1019,7 @@ def index_postalcode(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),                          
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Residential Submarket)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -1021,10 +1038,11 @@ def index_market(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
   
-    logger.debug('''  Start index_submarket_residential''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
         set_market_mapping(typeName)
@@ -1039,7 +1057,7 @@ def index_market(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.submarket_residential_nbhd a""")
+                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_boundary)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1050,7 +1068,7 @@ def index_market(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),                          
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Residential Submarket)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -1069,10 +1087,11 @@ def index_quadrant(prm):
 
     if 'type' in prm:
         typeName = prm['type']
+        typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
         
-    logger.debug('''  Start index_submarket_residential''')
+    logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,typeName)
         set_quadrant_mapping(typeName)
@@ -1087,7 +1106,7 @@ def index_quadrant(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.submarket_residential_nbhd a""")
+                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1098,7 +1117,7 @@ def index_quadrant(prm):
                 "alt_core_address": alt_address(super_core_address(data[1]), True),                          
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(Residential Submarket)", 
+                "zipcode": "(" + typeDesc + ")", 
                 "domain": data[4],
                 "normative": int(data[5]),
                 "extentBBOX": json.loads(data[6]), 
@@ -1117,16 +1136,16 @@ def main_loop():
     
     if (not os.path.isdir(OutputDir) ):
         os.mkdir(OutputDir)
-    index_addresses({"reset": True, "type": "address"})
-    index_neighborhoods({"reset": True, "type": "nbhd"})
-    index_landmarks({"reset": True, "type": "landmark"})
+    index_addresses({"reset": True, "type": "address",  "descr": "Address"})
+    index_neighborhoods({"reset": True, "type": "nbhd",  "descr": "Neighborhoods"})
+    index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
 
-    index_submarket_commercial({"reset": True, "type": "SMC"})
-    index_submarket_residential({"reset": True, "type": "SMR"})
+    index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
+    index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
     
-    index_market({"reset": True, "type": "market"})
-    index_postalcode({"reset": True, "type": "postalcode"})
-    index_quadrant({"reset": True, "type": "quadrant"})
+    index_market({"reset": True, "type": "market",  "descr": "Market"})
+    index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
+    index_quadrant({"reset": True, "type": "quadrant",  "descr": "Quadrant of City"})
 
 
     if (RUNLIVE == False):
