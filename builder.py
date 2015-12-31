@@ -28,6 +28,7 @@ PORT=int(os.environ.get('PORT', 9200))
 
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
+DB_SCHEMA = os.environ.get('CREATE_DB_SCHEMA')
 
 DB_NAME = os.environ.get('DB_NAME')
 DB_INSTANCE = os.environ.get('DB_INSTANCE')
@@ -666,9 +667,9 @@ def index_landmarks(prm):
                 a.ssl,
                 a.geometry
                 FROM 
-                    temp.location_alias a LEFT OUTER JOIN development.properties b 
+                    temp.location_alias a LEFT OUTER JOIN %s.properties b 
                     ON (a.ssl = b.local_id)
-        )""")
+        )""" % (DB_SCHEMA))
         cursor.execute("""SELECT a.addralias_id::TEXT, 
             a.aliasname as name,
             a.city, 
@@ -742,7 +743,7 @@ def index_neighborhoods(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT 'NBHD:' || nbhd::TEXT, a.descriptio as name,
+        cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
             'WASHINGTON' as city,
             'DC' as state,
             'DCZ'::TEXT as domain, 0 as normative,  
@@ -751,7 +752,9 @@ def index_neighborhoods(prm):
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                temp.nbhd a""")
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
+                    FROM temp.create_nbhd
+                    WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -805,7 +808,7 @@ def index_addresses(prm):
             a.fulladdress as proper_address
             FROM (temp.address_points a LEFT OUTER JOIN
                 temp.nbhd n ON (st_intersects(a.geometry, n.geometry)))  LEFT OUTER JOIN
-                development.properties p ON (p.local_id = a.local_id))""")
+                %s.properties p ON (p.local_id = a.local_id))""" % (DB_SCHEMA))
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -901,7 +904,7 @@ def index_submarket_commercial(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT ogc_fid::TEXT, replace(a.name, '_', ' ') as name,
+        cursor.execute("""SELECT objectid::TEXT, replace(a.name, '_', ' ') as name,
             'WASHINGTON' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,  
@@ -909,7 +912,9 @@ def index_submarket_commercial(prm):
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.submarket_commercial_nbhd)  a""")
+                (SELECT submarket as name, id as objectid, st_simplifypreservetopology(geometry,0.0001) as geometry 
+                    FROM temp.submarket_commercial_nbhd
+                    WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(),             
@@ -958,7 +963,9 @@ def index_submarket_residential(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.submarket_residential_nbhd)  a""")
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
+                    FROM temp.submarket_residential_nbhd
+                    WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -999,8 +1006,7 @@ def index_postalcode(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT geoid10::TEXT as objectid,
-            azcta5ce10 as name,
+        cursor.execute("""SELECT geoid10::TEXT as objectid, a.name,
             'WASHINGTON' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,  
@@ -1008,7 +1014,10 @@ def index_postalcode(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.00001) as geometry FROM temp.census_zcta5)  a""")
+                (SELECT z.zcta5ce10 as name, z.geoid10, st_simplifypreservetopology(z.geometry,0.00001) as geometry
+                    FROM temp.census_zcta5 z
+                    WHERE z.zcta5ce10 in (SELECT f.zcta5ce10 FROM temp.dc_census_face f WHERE
+                       f.statefp10 = '11') )  as a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1057,7 +1066,7 @@ def index_market(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_boundary)  a""")
+                (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_boundary)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1106,7 +1115,7 @@ def index_quadrant(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, object_id, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_quadrants)  a""")
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
