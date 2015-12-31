@@ -11,14 +11,15 @@ Scripts to build the geocoder index
 1. venv/bin/pip install -r requirements.txt
 
 ### setup environment variables
-1. copy load_env.sh.sample to load_env.sh
-1. edit load_env.sh
+1. copy dev.env.sample to dev.env
+1. edit dev.env
 1. edit all fields with a value in < >
 
 ### run the indexer
 * run venv/bin/python builder.py
+* run bin/builder_finalize.sh
 
 ### apply the bulk load
-* bash batch_apply.sh
+* bash bin/batch_apply.sh
 
 

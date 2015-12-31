@@ -3,15 +3,20 @@
 if [ -z "$ES_Index" ]; then
     echo "usage:   batch_apply.sh"
     echo "    set the ENV var ES_Index before running this script"
-    echo "    see load_env.sh for one way to do this"
+    echo "    see dev.env for one way to do this"
     exit
 fi
+
+BINDIR=`dirname $0`
 
 echo "Starting to apply ElasticSearch Index $ES_Index"
 echo ""
 
+# we may have unpackaged a dump into the data dir
 if [ -d "data" ]; then
     cd data
+else
+    echo ""
 fi
 
 #scan for idxname
@@ -23,7 +28,7 @@ if [ "$ES_Index" != "$idxname" ]; then
     exit
 fi
 
-bash batch_pre.sh
+bash ${BINDIR}/batch_pre.sh
 
 if [ ! -r tmp ]; then
   mkdir tmp
@@ -33,12 +38,19 @@ fi
 
 split -l 10000 batch.json tmp/bq
 
+# using the split files as smaller batch commits
+# apply this update to the ElasticSerach server
+# to apply to a remote host
+# use:
+#   ssh -L9200:localhost:9200 ubuntu@<host> 
+
 for i in tmp/bq??; do
     curl -XPOST localhost:9200/_bulk --data-binary  @${i}
     echo ""
 done 
 
 
+# The actions below are atomic, in that both occur in the same instant
 curl -XPOST 'http://localhost:9200/_aliases' -d '
 {
     "actions" : [
@@ -49,12 +61,4 @@ curl -XPOST 'http://localhost:9200/_aliases' -d '
 
 curl -XGET 'http://localhost:9200/_aliases'
 
-exit
-
-curl -XPOST 'http://localhost:9200/_aliases' -d '
-{
-    "actions" : [
-        { "add" : { "index" : "geodc", "alias" : "gdc" } }
-    ]
-}'
 

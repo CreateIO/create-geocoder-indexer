@@ -1,15 +1,17 @@
 #!/bin/bash
 
 # package the build up and save it to AWS
+set -e
 
 dt=`date +%Y%m%d`
 file="gdc_${dt}.zip"
 
-if [ ! -r data/batch_pre.sh ]; then
+if [ ! -r bin/batch_pre.sh ]; then
     echo "please restore data/batch_pre.sh"
     exit
 fi
 
+# do not save directory paths and compress the file as much as possible
 zip -j -9 dumps/${file}  bin/batch_apply.sh bin/batch_pre.sh data/*
 
 # save the build into AWS S3
