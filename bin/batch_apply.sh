@@ -42,7 +42,7 @@ split -l 10000 batch.json tmp/bq
 # apply this update to the ElasticSerach server
 # to apply to a remote host
 # use:
-#   ssh -c -L9200:localhost:9200 ubuntu@<host> 
+#   ssh -C -L9200:localhost:9200 ubuntu@<host> 
 # the -c flag enables compression
 
 for i in tmp/bq??; do
