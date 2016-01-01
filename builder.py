@@ -510,9 +510,9 @@ def strip_grammar(address):
     address = re.sub(r'-',  ' and ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  '',  address)
-    
+
     return address
-    
+
 def core_address(address):
     # strip leading  Directionality
     # IGNORE FOR DC at this time
@@ -567,7 +567,7 @@ def alt_addresses(address):
     new_address = re.sub(r'WHITE HOUSE',  'WHITEHOUSE',  address)   
     if (new_address != address):
         alts.append(new_address)
-        
+
     new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)   
     if (new_address != address):
         alts.append(new_address)
@@ -575,7 +575,7 @@ def alt_addresses(address):
     new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL42',  address)   
     if (new_address != address):
         alts.append(new_address)        
-        
+
     # attempt to convert 11th => eleventh
     new_address = number_cardinal(address)
     if (new_address != address):
@@ -584,9 +584,9 @@ def alt_addresses(address):
     test_address = cardinal_number(address)
     if (new_address != address):
         alts.append(new_address)
-    
+
     return alts
-    
+
 def alt_address(address, force): 
     # custom DC rules go here
     new_address = re.sub(r' EYE ',  ' I ',  address)
@@ -605,7 +605,7 @@ def alt_address(address, force):
 
     if ( new_address == address):
         new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)   
-        
+
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
     if (test_address == new_address):
@@ -658,7 +658,7 @@ def submit_address(data,  typeName):
         if alt_ctr > 0:
             address['id'] = data[0].strip() + '_%s' % (alt_ctr)        
         send_address(address,  typeName)
-        
+
         alt_ctr += 1
 
 def index_landmarks(prm):
@@ -668,7 +668,7 @@ def index_landmarks(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -741,12 +741,12 @@ def index_landmarks(prm):
                     address['proper_address'] = data[12] + ', ' + address['proper_address']
                 if ( "front_vect" in address and not ("coordinates" in  address['front_vect'])):
                     del address['front_vect'];
-    
+
                 send_address(address,  typeName)
                 if (cntr % 5000) == 0:
                     time.sleep(0)
                 cntr += 1
-                
+
                 alt_ctr += 1
 
     pass
@@ -758,7 +758,7 @@ def index_addresses(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -868,7 +868,7 @@ def index_neighborhoods(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -923,7 +923,7 @@ def index_submarket_commercial(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,typeName)
@@ -974,7 +974,7 @@ def index_submarket_residential(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -1025,7 +1025,7 @@ def index_postalcode(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -1077,7 +1077,7 @@ def index_market(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-  
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME, typeName)
@@ -1126,7 +1126,7 @@ def index_quadrant(prm):
         typeDesc = prm['descr']
     else:
         assert 1>2,  "the 'type' must be declared"
-        
+
     logger.debug('''  Start ''' + typeName)
     if 'reset' in prm and prm and prm['reset'] == True:
         drop_index(IDXNAME,typeName)
@@ -1169,17 +1169,18 @@ def index_quadrant(prm):
     pass
 
 def main_loop():
-    
+
     if (not os.path.isdir(OutputDir) ):
         os.mkdir(OutputDir)
-    #index_addresses({"reset": True, "type": "address",  "descr": "Address"})
-    #index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
+
+    index_addresses({"reset": True, "type": "address",  "descr": "Address"})
+    index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
 
     index_neighborhoods({"reset": True, "type": "nbhd",  "descr": "Neighborhood"})
 
     index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
     index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
-    
+
     index_market({"reset": True, "type": "market",  "descr": "Market"})
     index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
     index_quadrant({"reset": True, "type": "quadrant",  "descr": "Quadrant of City"})
