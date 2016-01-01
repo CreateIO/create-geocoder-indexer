@@ -182,7 +182,7 @@ def send_mapping(address,  typemap):
     send_action(IDXNAME, typemap,  address)
     pass
 
-def send_address_live(address, indtyp):    
+def send_address_live(address, indtyp):
 
     response = cStringIO.StringIO()
     github_url = 'http://127.0.0.1:%d/%s/%s/' % (PORT, IDXNAME,  indtyp) + str(address["id"])
@@ -204,10 +204,10 @@ def send_address_live(address, indtyp):
         c.reset()
 
     logger.debug(response.getvalue())
-    response.close()    
+    response.close()
     pass
 
-def send_address_batch(address,  indtyp):        
+def send_address_batch(address,  indtyp):
     activity = {"index": { "_index": IDXNAME,  "_type": indtyp, "_id": address['id']}}
     BATCH.write(json.dumps(activity) + "\n");
     BATCH.write(json.dumps(address) + "\n")
@@ -294,7 +294,7 @@ def set_submarket_C_mapping(mapname):
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
-                "alt_core_address": { "type": "string" },                
+                "alt_core_address": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" }
                 }
@@ -312,7 +312,7 @@ def set_submarket_R_mapping(mapname):
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
-                "alt_core_address": { "type": "string" },                
+                "alt_core_address": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" }
                 }
@@ -330,7 +330,7 @@ def set_postalcode_mapping(mapname):
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
-                "alt_core_address": { "type": "string" },                
+                "alt_core_address": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" }
                 }
@@ -348,7 +348,7 @@ def set_quadrant_mapping(mapname):
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
-                "alt_core_address": { "type": "string" },                
+                "alt_core_address": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" }
                 }
@@ -366,7 +366,7 @@ def set_market_mapping(mapname):
                 "complete_address": { "type": "string" },
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
-                "alt_core_address": { "type": "string" },                
+                "alt_core_address": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" }
                 }
@@ -459,7 +459,7 @@ def strip_type(address):
 
     return address
 
-def abbr_Type(address):    
+def abbr_Type(address):
     # abbreviate address street types with the USPS preferred abbreviation
     address = re.sub(r' STREET',  ' ST',  address)
     address = re.sub(r' COURT',  ' CT',  address)
@@ -548,11 +548,11 @@ def alt_addresses(address):
     new_address = re.sub(r' MASSACHUSETTS ',  ' MASS ',  address)
     if (new_address != address):
         alts.append(new_address)
-    new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address) 
+    new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address)
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)        
+    new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)
     if (new_address != address):
         alts.append(new_address)
 
@@ -560,21 +560,21 @@ def alt_addresses(address):
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r' NEW YORK ',  ' NY ',  address)   
+    new_address = re.sub(r' NEW YORK ',  ' NY ',  address)
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r'WHITE HOUSE',  'WHITEHOUSE',  address)   
+    new_address = re.sub(r'WHITE HOUSE',  'WHITEHOUSE',  address)
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)   
+    new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL42',  address)   
+    new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL42',  address)
     if (new_address != address):
-        alts.append(new_address)        
+        alts.append(new_address)
 
     # attempt to convert 11th => eleventh
     new_address = number_cardinal(address)
@@ -587,7 +587,7 @@ def alt_addresses(address):
 
     return alts
 
-def alt_address(address, force): 
+def alt_address(address, force):
     # custom DC rules go here
     new_address = re.sub(r' EYE ',  ' I ',  address)
     if ( new_address == address):
@@ -595,16 +595,16 @@ def alt_address(address, force):
     if ( new_address == address):
         new_address = re.sub(r' MASSACHUSETTS ',  ' MASS ',  address)
     if ( new_address == address):
-        new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address) 
+        new_address = re.sub(r' CONNECTICUT ',  ' CONN ',  address)
     if ( new_address == address):
-        new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)        
+        new_address = re.sub(r' PENNSYLVANIA ',  ' PENN ',  address)
     if ( new_address == address):
         new_address = re.sub(r' MASSACHEUSETTS ',  ' MASS ',  address)
     if ( new_address == address):
-        new_address = re.sub(r' NEW YORK ',  ' NY ',  address)   
+        new_address = re.sub(r' NEW YORK ',  ' NY ',  address)
 
     if ( new_address == address):
-        new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)   
+        new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)
 
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
@@ -635,28 +635,28 @@ def submit_address(data,  typeName):
     alts = alt_addresses(data[1])
     alt_ctr = 0
     for address_entry in alts:
-        address = {"id": data[0].strip(), 
-            "proper_address": data[14], 
+        address = {"id": data[0].strip(),
+            "proper_address": data[14],
             "complete_address": address_entry,
-            "core_address": core_address(address_entry), 
-            "super_core_address": super_core_address(address_entry), 
+            "core_address": core_address(address_entry),
+            "super_core_address": super_core_address(address_entry),
             "alt_core_address": alt_address(super_core_address(address_entry), True),
             "city": data[2],
             "state": data[3],
             "zipcode": data[4],
             "local_id": data[6],
-            "local_desc": data[7], 
-            "addr_use": data[8], 
-            "extentBBOX": json.loads(data[9]), 
-            "location": json.loads(data[10]), 
-            "neighborhood": data[11], 
-            "camera": json.loads(data[12]), 
+            "local_desc": data[7],
+            "addr_use": data[8],
+            "extentBBOX": json.loads(data[9]),
+            "location": json.loads(data[10]),
+            "neighborhood": data[11],
+            "camera": json.loads(data[12]),
             "front_vect": json.loads(data[13])
         }
         if data[5] > '':
             address['address_number'] = int(data[5])
         if alt_ctr > 0:
-            address['id'] = data[0].strip() + '_%s' % (alt_ctr)        
+            address['id'] = data[0].strip() + '_%s' % (alt_ctr)
         send_address(address,  typeName)
 
         alt_ctr += 1
@@ -677,8 +677,8 @@ def index_landmarks(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""CREATE TEMP TABLE addr_alias_fronts as (
-            SELECT a.address_id, a.fulladdress, 
-                coalesce(b.front_vect,'{}')::TEXT as front_vect,                
+            SELECT a.address_id, a.fulladdress,
+                coalesce(b.front_vect,'{}')::TEXT as front_vect,
                 b.property_id, b.parcel_id,
                 a.addralias_id,
                 a.aliasname,
@@ -689,17 +689,17 @@ def index_landmarks(prm):
                 a.aliastype,
                 a.ssl,
                 a.geometry
-                FROM 
-                    temp.location_alias a LEFT OUTER JOIN %s.properties b 
+                FROM
+                    temp.location_alias a LEFT OUTER JOIN %s.properties b
                     ON (a.ssl = b.local_id)
         )""" % (DB_SCHEMA))
-        cursor.execute("""SELECT a.addralias_id::TEXT, 
+        cursor.execute("""SELECT a.addralias_id::TEXT,
             a.aliasname as name,
-            a.city, 
-            a.state, 
+            a.city,
+            a.state,
             a.zipcode,
-            'DCMAR_Alias'::TEXT as domain, 
-            0 as normative,  
+            'DCMAR_Alias'::TEXT as domain,
+            0 as normative,
             a.status,
             a.aliastype,
             a.ssl,
@@ -719,20 +719,20 @@ def index_landmarks(prm):
                 address = {"id": 'lm_' + data[0].strip(),
                     "proper_address": address_entry,
                     "complete_address": address_entry,
-                    "core_address": core_address(address_entry), 
-                    "super_core_address": super_core_address(address_entry), 
-                    "alt_core_address": alt_address(super_core_address(address_entry), True), 
+                    "core_address": core_address(address_entry),
+                    "super_core_address": super_core_address(address_entry),
+                    "alt_core_address": alt_address(super_core_address(address_entry), True),
                     "city": data[2],
                     "state": data[3],
-                    "zipcode": data[4], 
+                    "zipcode": data[4],
                     "domain": data[5],
                     "normative": int(data[6]),
-                    "status": data[7], 
-                    "aliastype": data[8], 
-                    "local_id": data[9], 
-                    "extentBBOX": json.loads(data[10]), 
-                    "location": json.loads(data[10]), 
-                    "front_vect": json.loads(data[13]), 
+                    "status": data[7],
+                    "aliastype": data[8],
+                    "local_id": data[9],
+                    "extentBBOX": json.loads(data[10]),
+                    "location": json.loads(data[10]),
+                    "front_vect": json.loads(data[13]),
                     "camera": {}
                 }
                 if alt_ctr > 0:
@@ -786,7 +786,7 @@ def index_addresses(prm):
         # add place descriptors from the OTR owner_point file
         # filter by those not already in the address file
         cursor.execute("""CREATE TEMP TABLE owner_point_temp as (
-            SELECT p.local_id, 
+            SELECT p.local_id,
                 trim(CASE
                     WHEN p.property_address like '% ST %' THEN replace (p.property_address, ' ST ', ' STREET ')
                     WHEN p.property_address like '% AV %' THEN replace (p.property_address, ' AV ', ' AVENUE ')
@@ -829,25 +829,25 @@ def index_addresses(prm):
             """)
         cursor.execute("""CREATE INDEX address_list_words__ind on address_list_words(words)""")
         cursor.execute("""CREATE TEMP TABLE del_op as (
-            SELECT p.property_id, p.local_id, (regexp_matches(property_address, '[^ ]* [^ ]*'))[1] as words 
+            SELECT p.property_id, p.local_id, (regexp_matches(property_address, '[^ ]* [^ ]*'))[1] as words
             FROM owner_point_temp p
         )""")
         cursor.execute("""DELETE FROM del_op d WHERE EXISTS (SELECT 1 FROM address_list_words w WHERE w.words = d.words )""")
 
-        cursor.execute("""CREATE INDEX del_op__ind on del_op(property_id)""")        
-        cursor.execute("""DELETE FROM owner_point_temp o WHERE 
+        cursor.execute("""CREATE INDEX del_op__ind on del_op(property_id)""")
+        cursor.execute("""DELETE FROM owner_point_temp o WHERE
              NOT EXISTS (SELECT 1 FROM del_op d WHERE d.property_id = o.property_id) """)
 
         cursor.execute("""INSERT INTO address_list_temp (indexable_id, fulladdress, city, state, zipcode, local_id, local_desc, addrnum,
             extent, location, front_vect, neighborhood, camera, proper_address)  (
-            SELECT 'OTR_' || property_id::TEXT, property_address, 'WASHINGTON', 'DC', '', local_id, 'SSL', 
+            SELECT 'OTR_' || property_id::TEXT, property_address, 'WASHINGTON', 'DC', '', local_id, 'SSL',
             coalesce(ax[1], '0') as addrnum,
             st_asgeojson(st_expand(geometry, 0.0000001)) as extent,
             st_asgeojson(geometry) as location,
             coalesce(front_vect,'{}')::TEXT as front_vect,
             ''::TEXT as neighborhood,
             '{}'::TEXT as camera,
-            property_address 
+            property_address
             FROM  owner_point_temp o,
                 regexp_matches(property_address, '^[0-9]*') as ax
                 )""")
@@ -879,34 +879,34 @@ def index_neighborhoods(prm):
         cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
             'WASHINGTON' as city,
             'DC' as state,
-            'CREATE_DCZ'::TEXT as domain, 0 as normative,  
+            'CREATE_DCZ'::TEXT as domain, 0 as normative,
             'G' as class,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
                     FROM temp.create_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
             address_entry = data[1];
-            address = {"id": data[0].strip(), 
-                "proper_address": data[1],            
+            address = {"id": data[0].strip(),
+                "proper_address": data[1],
                 "complete_address": address_entry,
-                "core_address": core_address(address_entry), 
-                "super_core_address": super_core_address(address_entry), 
+                "core_address": core_address(address_entry),
+                "super_core_address": super_core_address(address_entry),
                 "alt_core_address": alt_address(super_core_address(address_entry), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
                 "class": data[6],
-                "extentBBOX": json.loads(data[7]), 
-                "location": json.loads(data[8]), 
-                "neighborhood": data[1], 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[7]),
+                "location": json.loads(data[8]),
+                "neighborhood": data[1],
+                "camera": {},
                 "geometry": json.loads(data[9])
             }
             send_address(address, typeName)
@@ -934,30 +934,30 @@ def index_submarket_commercial(prm):
         cursor.execute("""SELECT objectid::TEXT, replace(a.name, '_', ' ') as name,
             'WASHINGTON' as city,
             'DC' as state,
-            'create.io'::TEXT as domain, 0 as normative,  
+            'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT submarket as name, id as objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry 
+                (SELECT submarket as name, id as objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry
                     FROM temp.submarket_commercial_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
-            address = {"id": data[0].strip(),             
+            address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": data[1],
-                "core_address": core_address(data[1]), 
-                "super_core_address": super_core_address(data[1]), 
-                "alt_core_address": alt_address(super_core_address(data[1]), True),         
+                "core_address": core_address(data[1]),
+                "super_core_address": super_core_address(data[1]),
+                "alt_core_address": alt_address(super_core_address(data[1]), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
-                "extentBBOX": json.loads(data[6]), 
-                "location": json.loads(data[7]), 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[6]),
+                "location": json.loads(data[7]),
+                "camera": {},
                 "geometry": json.loads(data[8])
             }
             send_address(address,  typeName)
@@ -985,30 +985,30 @@ def index_submarket_residential(prm):
         cursor.execute("""SELECT objectid::TEXT, name,
             'WASHINGTON' as city,
             'DC' as state,
-            'create.io'::TEXT as domain, 0 as normative,  
+            'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.00001) as geometry 
+                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.00001) as geometry
                     FROM temp.submarket_residential_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
-            address = {"id": data[0].strip(), 
+            address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": data[1],
-                "core_address": core_address(data[1]), 
-                "super_core_address": super_core_address(data[1]), 
-                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "core_address": core_address(data[1]),
+                "super_core_address": super_core_address(data[1]),
+                "alt_core_address": alt_address(super_core_address(data[1]), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
-                "extentBBOX": json.loads(data[6]), 
-                "location": json.loads(data[7]), 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[6]),
+                "location": json.loads(data[7]),
+                "camera": {},
                 "geometry": json.loads(data[8])
             }
             send_address(address, typeName)
@@ -1036,7 +1036,7 @@ def index_postalcode(prm):
         cursor.execute("""SELECT geoid10::TEXT as objectid, a.name,
             'WASHINGTON' as city,
             'DC' as state,
-            'create.io'::TEXT as domain, 0 as normative,  
+            'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
@@ -1047,20 +1047,20 @@ def index_postalcode(prm):
                        f.statefp10 = '11') )  as a""")
         result = cursor.fetchall()
         for data in result:
-            address = {"id": data[0].strip(), 
+            address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": data[1],
-                "core_address": core_address(data[1]), 
-                "super_core_address": super_core_address(data[1]), 
-                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "core_address": core_address(data[1]),
+                "super_core_address": super_core_address(data[1]),
+                "alt_core_address": alt_address(super_core_address(data[1]), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
-                "extentBBOX": json.loads(data[6]), 
-                "location": json.loads(data[7]), 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[6]),
+                "location": json.loads(data[7]),
+                "camera": {},
                 "geometry": json.loads(data[8])
             }
             send_address(address,  typeName)
@@ -1088,7 +1088,7 @@ def index_market(prm):
         cursor.execute("""SELECT objectid::TEXT, name,
             'WASHINGTON' as city,
             'DC' as state,
-            'create.io'::TEXT as domain, 0 as normative,  
+            'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
@@ -1096,20 +1096,20 @@ def index_market(prm):
                 (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_boundary)  a""")
         result = cursor.fetchall()
         for data in result:
-            address = {"id": data[0].strip(), 
+            address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": data[1],
-                "core_address": core_address(data[1]), 
-                "super_core_address": super_core_address(data[1]), 
-                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "core_address": core_address(data[1]),
+                "super_core_address": super_core_address(data[1]),
+                "alt_core_address": alt_address(super_core_address(data[1]), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
-                "extentBBOX": json.loads(data[6]), 
-                "location": json.loads(data[7]), 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[6]),
+                "location": json.loads(data[7]),
+                "camera": {},
                 "geometry": json.loads(data[8])
             }
             send_address(address,  typeName)
@@ -1137,7 +1137,7 @@ def index_quadrant(prm):
         cursor.execute("""SELECT objectid::TEXT, name,
             'WASHINGTON' as city,
             'DC' as state,
-            'create.io'::TEXT as domain, 0 as normative,  
+            'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
@@ -1145,20 +1145,20 @@ def index_quadrant(prm):
                 (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
-            address = {"id": data[0].strip(), 
+            address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": data[1],
-                "core_address": core_address(data[1]), 
-                "super_core_address": super_core_address(data[1]), 
-                "alt_core_address": alt_address(super_core_address(data[1]), True),                          
+                "core_address": core_address(data[1]),
+                "super_core_address": super_core_address(data[1]),
+                "alt_core_address": alt_address(super_core_address(data[1]), True),
                 "city": data[2],
                 "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
+                "zipcode": "(" + typeDesc + ")",
                 "domain": data[4],
                 "normative": int(data[5]),
-                "extentBBOX": json.loads(data[6]), 
-                "location": json.loads(data[7]), 
-                "camera": {}, 
+                "extentBBOX": json.loads(data[6]),
+                "location": json.loads(data[7]),
+                "camera": {},
                 "geometry": json.loads(data[8])
             }
             send_address(address,  typeName)
