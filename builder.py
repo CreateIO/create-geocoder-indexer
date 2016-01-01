@@ -1176,7 +1176,7 @@ def main_loop():
     index_addresses({"reset": True, "type": "address",  "descr": "Address"})
     index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
 
-    index_neighborhoods({"reset": True, "type": "nbhd",  "descr": "Neighborhood"})
+    index_neighborhoods({"reset": True, "type": "neighborhood",  "descr": "Neighborhood"})
 
     index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
     index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
