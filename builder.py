@@ -489,6 +489,13 @@ def abbr_Type(address):
 
     return address
 
+def abbr_lead(address):
+
+    address = re.sub(r'^ST.',  'SAINT',  address)
+    address = re.sub(r'^ST ',  'SAINT',  address)
+
+    return address
+
 def super_core_address(address):
     # this is an attempt to remove all words with a greater frequency than 10%
     address = strip_type(address)
@@ -497,6 +504,15 @@ def super_core_address(address):
 
     return address
 
+def strip_grammar(address):
+    address = re.sub(r'&',  ' and ',  address)
+    address = re.sub(r'/',  ' and ',  address)
+    address = re.sub(r'-',  ' and ',  address)
+    address = re.sub(r"'",  '',  address)
+    address = re.sub(r"\.",  '',  address)
+    
+    return address
+    
 def core_address(address):
     # strip leading  Directionality
     # IGNORE FOR DC at this time
@@ -506,12 +522,18 @@ def core_address(address):
     address = re.sub(r' (NE|NW|SE|SW)$',  ' ',  address)
 
     #convert Streets to Types
-    address= abbr_Type(address)
+    address = abbr_Type(address)
+
+    address = strip_grammar(address)
+    address = abbr_lead(address)
 
     return address
 
 def alt_addresses(address):
     alts = [address]
+
+    address = strip_grammar(address)
+    address = abbr_lead(address)
 
     # custom DC rules go here
     new_address = re.sub(r' EYE ',  ' I ',  address)
@@ -600,6 +622,8 @@ def alt_core_address(address):
     #address = re.sub(r'^NORTH ',  '',  address)
     address = re.sub(r' EYE ',  ' I ',  address)
 
+    address = strip_grammar(address)
+
     # strip tailing Quadrant data
     address = re.sub(r' (NE|NW|SE|SW)$',  '',  address)
 
@@ -636,7 +660,6 @@ def submit_address(data,  typeName):
         send_address(address,  typeName)
         
         alt_ctr += 1
-
 
 def index_landmarks(prm):
 
@@ -725,57 +748,6 @@ def index_landmarks(prm):
                 cntr += 1
                 
                 alt_ctr += 1
-
-    pass
-
-def index_neighborhoods(prm):
-
-    if 'type' in prm:
-        typeName = prm['type']
-        typeDesc = prm['descr']
-    else:
-        assert 1>2,  "the 'type' must be declared"
-  
-    logger.debug('''  Start ''' + typeName)
-    if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME, typeName)
-        set_neighborhood_mapping(typeName)
-
-    cntr = 1
-    with db_cursor() as cursor:
-        cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
-            'WASHINGTON' as city,
-            'DC' as state,
-            'DCZ'::TEXT as domain, 0 as normative,  
-            'G' as class,
-            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
-            st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
-            st_asgeojson(a.geometry) as geometry
-            FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
-                    FROM temp.create_nbhd
-                    WHERE st_npoints(geometry) > 3)  a""")
-        result = cursor.fetchall()
-        for data in result:
-            address = {"id": data[0].strip(), 
-                "proper_address": data[1],            
-                "complete_address": data[1],
-                "city": data[2],
-                "state": data[3],
-                "zipcode": "(" + typeDesc + ")", 
-                "domain": data[4],
-                "normative": int(data[5]),
-                "class": data[6],
-                "extentBBOX": json.loads(data[7]), 
-                "location": json.loads(data[8]), 
-                "neighborhood": data[1], 
-                "camera": {}, 
-                "geometry": json.loads(data[9])
-            }
-            send_address(address, typeName)
-            if (cntr % 5000) == 0:
-                time.sleep(0)
-            cntr += 1
 
     pass
 
@@ -889,6 +861,61 @@ def index_addresses(prm):
             cntr += 1
     pass
 
+def index_neighborhoods(prm):
+
+    if 'type' in prm:
+        typeName = prm['type']
+        typeDesc = prm['descr']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+  
+    logger.debug('''  Start ''' + typeName)
+    if 'reset' in prm and prm and prm['reset'] == True:
+        drop_index(IDXNAME, typeName)
+        set_neighborhood_mapping(typeName)
+
+    cntr = 1
+    with db_cursor() as cursor:
+        cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
+            'WASHINGTON' as city,
+            'DC' as state,
+            'CREATE_DCZ'::TEXT as domain, 0 as normative,  
+            'G' as class,
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
+            st_asgeojson(a.geometry) as geometry
+            FROM
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
+                    FROM temp.create_nbhd
+                    WHERE st_npoints(geometry) > 3)  a""")
+        result = cursor.fetchall()
+        for data in result:
+            address_entry = data[1];
+            address = {"id": data[0].strip(), 
+                "proper_address": data[1],            
+                "complete_address": address_entry,
+                "core_address": core_address(address_entry), 
+                "super_core_address": super_core_address(address_entry), 
+                "alt_core_address": alt_address(super_core_address(address_entry), True),
+                "city": data[2],
+                "state": data[3],
+                "zipcode": "(" + typeDesc + ")", 
+                "domain": data[4],
+                "normative": int(data[5]),
+                "class": data[6],
+                "extentBBOX": json.loads(data[7]), 
+                "location": json.loads(data[8]), 
+                "neighborhood": data[1], 
+                "camera": {}, 
+                "geometry": json.loads(data[9])
+            }
+            send_address(address, typeName)
+            if (cntr % 5000) == 0:
+                time.sleep(0)
+            cntr += 1
+
+    pass
+
 def index_submarket_commercial(prm):
 
     if 'type' in prm:
@@ -912,7 +939,7 @@ def index_submarket_commercial(prm):
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT submarket as name, id as objectid, st_simplifypreservetopology(geometry,0.0001) as geometry 
+                (SELECT submarket as name, id as objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry 
                     FROM temp.submarket_commercial_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
@@ -963,7 +990,7 @@ def index_submarket_residential(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry 
+                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.00001) as geometry 
                     FROM temp.submarket_residential_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
@@ -1014,7 +1041,7 @@ def index_postalcode(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT z.zcta5ce10 as name, z.geoid10, st_simplifypreservetopology(z.geometry,0.00001) as geometry
+                (SELECT z.zcta5ce10 as name, z.geoid10, st_simplifypreservetopology(st_cleangeometry(z.geometry),0.00001) as geometry
                     FROM temp.census_zcta5 z
                     WHERE z.zcta5ce10 in (SELECT f.zcta5ce10 FROM temp.dc_census_face f WHERE
                        f.statefp10 = '11') )  as a""")
@@ -1066,7 +1093,7 @@ def index_market(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_boundary)  a""")
+                (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_boundary)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1115,7 +1142,7 @@ def index_quadrant(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.0001) as geometry FROM temp.dc_quadrants)  a""")
+                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(), 
@@ -1145,9 +1172,10 @@ def main_loop():
     
     if (not os.path.isdir(OutputDir) ):
         os.mkdir(OutputDir)
-    index_addresses({"reset": True, "type": "address",  "descr": "Address"})
-    index_neighborhoods({"reset": True, "type": "nbhd",  "descr": "Neighborhoods"})
-    index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
+    #index_addresses({"reset": True, "type": "address",  "descr": "Address"})
+    #index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
+
+    index_neighborhoods({"reset": True, "type": "nbhd",  "descr": "Neighborhood"})
 
     index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
     index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
