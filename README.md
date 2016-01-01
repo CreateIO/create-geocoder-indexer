@@ -22,4 +22,14 @@ Scripts to build the geocoder index
 ### apply the bulk load
 * bash bin/batch_apply.sh
 
+## Ubuntu notes
+* sudo add-apt-repository ppa:webupd8team/java
+* sudo apt-get update
+* sudo apt-get install oracle-java8-installer
+
+* curl -o elasticsearch-1.7.4.deb https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.4.deb
+* sudo dpkg -i elasticsearch-1.7.4.deb
+
+* sudo update-rc.d elasticsearch defaults 95 10
+* sudo /etc/init.d/elasticsearch start
 
