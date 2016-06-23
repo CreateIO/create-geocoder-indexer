@@ -6,8 +6,9 @@ set -e
 dt=`date +%Y%m%d`
 file="gdc_${dt}.zip"
 
-if [ ! -r bin/batch_pre.sh ]; then
-    echo "please restore data/batch_pre.sh"
+# if either of data/batch.json or data/batch_pre.sh are missing, we need to re-run builder.py
+if [ ! -r data/batch_pre.sh -o -r data/batch_pre.json ]; then
+    echo "please rerun builder.py to create data/batch.json and data/batch_pre.sh"
     exit
 fi
 
@@ -15,14 +16,16 @@ if [ -r data/tmp ]; then
     echo "removing working data before packaging the build"
     rm -rf data/tmp
 fi
-if [ -r data/batch_apply.sh -o -r data/batch_pre.sh ]; then
+# the file batch_pre.sh is created by the builder.py process, so do not delete it here
+if [ -r data/batch_apply.sh ]; then
     echo "removing scripts from the data dir before packaging the build"
-    rm -f data/batch_apply.sh data/batch_pre.sh
+    rm -f data/batch_apply.sh
 fi
 
 
 # do not save directory paths and compress the file as much as possible
-zip -j -9 dumps/${file}  data/* bin/batch_apply.sh bin/batch_pre.sh 
+cp -p bin/batch_apply.sh data
+zip -j -9 dumps/${file}  data/* 
 
 # save the build into AWS S3
 # you may need to set the AWS_KEY and AWS_SECRET first

@@ -430,6 +430,8 @@ def cardinal_number(address):
     return address
 
 def strip_type(address):
+    
+    # these words are all occur in more than 5% of the addresses for the jurisdiction
     address = re.sub(r' STREET',  ' ',  address)
     address = re.sub(r' COURT',  ' ',  address)
     address = re.sub(r' CIRCLE',  ' ',  address)
@@ -459,8 +461,24 @@ def strip_type(address):
 
     return address
 
+def expand_abbr(address):
+    
+    # un abbreviate things before indexing, some will get re-abbreviated later
+    address = re.sub(r' ST ', ' STREET ', address)
+    address = re.sub(r' CT ', ' COURT ', address)
+    address = re.sub(r' CIR ', ' CIRCLE ', address)
+    address = re.sub(r' AVE ', ' AVENUE ', address)
+    address = re.sub(r' RD ', ' ROAD ', address)
+    address = re.sub(r' SQ ',' SQUARE ', address)
+    address = re.sub(r' QTR ', ' QUARTER ', address)
+    
+    return address
+    
 def abbr_Type(address):
-    # abbreviate address street types with the USPS preferred abbreviation
+    
+    # this step  creates a version of the address to support index matching
+    
+    # abbreviate address street types with the USPS preferred abbreviations
     address = re.sub(r' STREET',  ' ST',  address)
     address = re.sub(r' COURT',  ' CT',  address)
     address = re.sub(r' CIRCLE',  ' CIR CR',  address)
@@ -468,14 +486,14 @@ def abbr_Type(address):
     address = re.sub(r' ROAD',  ' RD',  address)
     address = re.sub(r' DRIVE',  ' DR',  address)
     address = re.sub(r' PLACE',  ' PL PLC',  address)
-    address = re.sub(r' PLAZA',  ' PLZ',  address)
+    address = re.sub(r' PLAZA',  ' PLZ PL',  address)
     address = re.sub(r' TERRACE',  ' TERR TR',  address)
     address = re.sub(r' TRAIL',  ' TRL TR',  address)
     address = re.sub(r' GREEN',  ' GRN GR',  address)
     address = re.sub(r' WAY',  ' WY',  address)
     address = re.sub(r' WALK',  ' WLK',  address)
     address = re.sub(r' ALLEY',  ' ALY',  address)
-    address = re.sub(r' BOULEVARD',  ' BLVD BL',  address)
+    address = re.sub(r' BOULEVARD',  ' BLVD BL BLV',  address)
     address = re.sub(r' CRESCENT',  ' CRES',  address)
     address = re.sub(r' MEWS',  ' MWS',  address)
     address = re.sub(r' LANE',  ' LA LN',  address)
@@ -486,6 +504,7 @@ def abbr_Type(address):
     address = re.sub(r' FREEWAY',  ' FWY FY',  address)
     address = re.sub(r' BRIDGE',  ' BR',  address)
     address = re.sub(r' SQUARE',  ' SQ',  address)
+    address = re.sub(r' QUARTER',  ' QTR',  address)
 
     return address
 
@@ -497,8 +516,10 @@ def abbr_lead(address):
     return address
 
 def super_core_address(address):
-    # this is an attempt to remove all words with a greater frequency than 10%
+    # this is an attempt to remove all words with a greater frequency than 15%
     address = strip_type(address)
+    
+    # remove a tailing quadrant ot directional
     address = re.sub(r' (NE|NW|SE|SW)$',  ' ',  address)
     address = re.sub(r'  ',  ' ',  address)
 
@@ -513,6 +534,16 @@ def strip_grammar(address):
 
     return address
 
+def pad_grammar(address):
+
+    address = re.sub(r'&',  ' & ',  address)
+    address = re.sub(r'/',  ' / ',  address)
+    address = re.sub(r'-',  ' - ',  address)
+    address = re.sub(r"'",  '',  address)
+    address = re.sub(r"\.",  ' ',  address)
+    
+    return address
+    
 def core_address(address):
     # strip leading  Directionality
     # IGNORE FOR DC at this time
@@ -530,6 +561,7 @@ def core_address(address):
     return address
 
 def alt_addresses(address):
+    
     alts = [address]
 
     address = strip_grammar(address)
@@ -572,7 +604,11 @@ def alt_addresses(address):
     if (new_address != address):
         alts.append(new_address)
 
-    new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL42',  address)
+    new_address = re.sub(r'PENN QTR',  'PENN QUARTER',  address)
+    if (new_address != address):
+        alts.append(new_address)
+
+    new_address = re.sub(r'CENTRAL BUSINESS DISTRICT',  'CBD',  address)
     if (new_address != address):
         alts.append(new_address)
 
@@ -605,7 +641,9 @@ def alt_address(address, force):
 
     if ( new_address == address):
         new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)
-
+    if ( new_address == address):
+        new_address = re.sub(r'CENTRAL BUSINESS DISTRICT',  'CBD',  address)
+        
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
     if (test_address == new_address):
@@ -713,9 +751,12 @@ def index_landmarks(prm):
         result = cursor.fetchall()
 
         for data in result:
-            alts = alt_addresses(data[1])
+            alts = alt_addresses(data[1].upper())
             alt_ctr = 0
             for address_entry in alts:
+                # place padding around ,/-&. to make the combined bit indexable
+                address_entry = pad_grammar(address_entry)
+
                 address = {"id": 'lm_' + data[0].strip(),
                     "proper_address": address_entry,
                     "complete_address": address_entry,
@@ -890,29 +931,33 @@ def index_neighborhoods(prm):
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
-            address_entry = data[1];
-            address = {"id": data[0].strip(),
-                "proper_address": data[1],
-                "complete_address": address_entry,
-                "core_address": core_address(address_entry),
-                "super_core_address": super_core_address(address_entry),
-                "alt_core_address": alt_address(super_core_address(address_entry), True),
-                "city": data[2],
-                "state": data[3],
-                "zipcode": "(" + typeDesc + ")",
-                "domain": data[4],
-                "normative": int(data[5]),
-                "class": data[6],
-                "extentBBOX": json.loads(data[7]),
-                "location": json.loads(data[8]),
-                "neighborhood": data[1],
-                "camera": {},
-                "geometry": json.loads(data[9])
-            }
-            send_address(address, typeName)
-            if (cntr % 5000) == 0:
-                time.sleep(0)
-            cntr += 1
+            alts = alt_addresses(data[1].upper())
+            for address_entry in alts:
+                # place padding around ,/-&. to make the combined bit indexable
+                address_entry = pad_grammar(address_entry)
+
+                address = {"id": data[0].strip(),
+                    "proper_address": data[1],
+                    "complete_address": address_entry,
+                    "core_address": core_address(address_entry),
+                    "super_core_address": super_core_address(address_entry),
+                    "alt_core_address": alt_address(super_core_address(address_entry), True),
+                    "city": data[2],
+                    "state": data[3],
+                    "zipcode": "(" + typeDesc + ")",
+                    "domain": data[4],
+                    "normative": int(data[5]),
+                    "class": data[6],
+                    "extentBBOX": json.loads(data[7]),
+                    "location": json.loads(data[8]),
+                    "neighborhood": data[1],
+                    "camera": {},
+                    "geometry": json.loads(data[9])
+                }
+                send_address(address, typeName)
+                if (cntr % 5000) == 0:
+                    time.sleep(0)
+                cntr += 1
 
     pass
 
@@ -944,12 +989,16 @@ def index_submarket_commercial(prm):
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
+            # place padding around ,/-&. to make the combined bit indexable
+            # expand some but not all abbreviations in the data
+            address_entry = expand_abbr(pad_grammar(data[1].upper()))
+
             address = {"id": data[0].strip(),
                 "proper_address": data[1],
-                "complete_address": data[1],
-                "core_address": core_address(data[1]),
-                "super_core_address": super_core_address(data[1]),
-                "alt_core_address": alt_address(super_core_address(data[1]), True),
+                "complete_address": address_entry,
+                "core_address": core_address(address_entry),
+                "super_core_address": super_core_address(address_entry),
+                "alt_core_address": alt_address(super_core_address(address_entry), True),
                 "city": data[2],
                 "state": data[3],
                 "zipcode": "(" + typeDesc + ")",
@@ -995,12 +1044,16 @@ def index_submarket_residential(prm):
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
+            # place padding around ,/-&. to make the combined bit indexable
+            address_entry = pad_grammar(address_entry)
+
+            address_entry = data[1].upper()
             address = {"id": data[0].strip(),
                 "proper_address": data[1],
-                "complete_address": data[1],
-                "core_address": core_address(data[1]),
-                "super_core_address": super_core_address(data[1]),
-                "alt_core_address": alt_address(super_core_address(data[1]), True),
+                "complete_address": address_entry,
+                "core_address": core_address(address_entry),
+                "super_core_address": super_core_address(address_entry),
+                "alt_core_address": alt_address(super_core_address(address_entry), True),
                 "city": data[2],
                 "state": data[3],
                 "zipcode": "(" + typeDesc + ")",
@@ -1145,12 +1198,13 @@ def index_quadrant(prm):
                 (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
+            address_entry = data[1].upper()
             address = {"id": data[0].strip(),
                 "proper_address": data[1],
-                "complete_address": data[1],
-                "core_address": core_address(data[1]),
-                "super_core_address": super_core_address(data[1]),
-                "alt_core_address": alt_address(super_core_address(data[1]), True),
+                "complete_address": address_entry,
+                "core_address": core_address(address_entry),
+                "super_core_address": super_core_address(address_entry),
+                "alt_core_address": alt_address(super_core_address(address_entry), True),
                 "city": data[2],
                 "state": data[3],
                 "zipcode": "(" + typeDesc + ")",
