@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import psycopg2
+
 import pycurl
 import cStringIO
 import time
@@ -17,14 +18,17 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
 ## elasticsearch uses lowercased names
 # set the index name to build
 # we use an alias to connect the index to the webserver
-IDXNAME = os.environ.get('ES_Index','geodc_qt')
+IDXNAME = os.environ.get('ES_Index','baci_a')
 OutputDir="./data/"
 
 RUNLIVE = False
 BATCH =  cStringIO.StringIO()
 BATCH_PRE = cStringIO.StringIO()
 
-PORT=int(os.environ.get('PORT', 9200))
+# this is the operational port for ElasticSearch
+PORT=int(os.environ.get('ES_PORT', 9200))
+# this is the port to use when loading data to the geocoder ElasticSearch Server
+LOAD_PORT=int(os.environ.get('ES_LOAD_PORT', 9200))
 
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
@@ -62,7 +66,7 @@ if DB_INSTANCE != 'test':
 else:
     DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
 # print the connection string we will use to connect
-print "Connecting to database\n ->%s" % (DB_CONNECTION_STRING)
+logger.info ('''Connecting to database\n ->%s''' % (DB_CONNECTION_STRING))
 
 #curl -XPOST 'http://localhost:9200/_aliases' -d '
 #{
@@ -97,7 +101,7 @@ def db_cursor(encoding=None):
 
 def send_command_live(cmd,  idx,  typ):
     response = cStringIO.StringIO()
-    github_url = 'http://127.0.0.1:%d/%s/%s' % (PORT, idx,  typ)
+    github_url = 'http://127.0.0.1:%d/%s/%s' % (LOAD_PORT, idx,  typ)
 
     c = pycurl.Curl()
     c.setopt(pycurl.URL, github_url)
@@ -120,8 +124,8 @@ def send_command_live(cmd,  idx,  typ):
 
 def send_command_batch(cmd,  idx,  typ):
     BATCH_PRE.write("""
-curl -X%s 'http://localhost:9200/%s/%s'\n
-""" % (cmd, idx, typ))
+curl -X%s 'http://localhost:%d/%s/%s'\n
+""" % (cmd, LOAD_PORT, idx, typ))
     pass
 
 def send_command(cmd,  idx,  typ):
@@ -134,7 +138,7 @@ def send_command(cmd,  idx,  typ):
 
 def send_action_live(idx,  typ,  data):
     response = cStringIO.StringIO()
-    github_url = 'http://127.0.0.1:%d/%s/%s' % (PORT, idx, typ)
+    github_url = 'http://127.0.0.1:%d/%s/%s' % (LOAD_PORT, idx, typ)
     data = json.dumps(data)
     logger.debug(data)
 
@@ -158,8 +162,8 @@ def send_action_live(idx,  typ,  data):
 
 def send_action_batch(idx,  typ,  data):
     BATCH_PRE.write("""
-curl -XPOST 'http://localhost:9200/%s/%s' -d '%s'\n
-""" % (idx, typ,  json.dumps(data) ))
+curl -XPOST 'http://localhost:%d/%s/%s' -d '%s'\n
+""" % (LOAD_PORT, idx, typ, json.dumps(data) ))
     pass
 
 def send_action(idx, typ, data):
@@ -185,7 +189,7 @@ def send_mapping(address,  typemap):
 def send_address_live(address, indtyp):
 
     response = cStringIO.StringIO()
-    github_url = 'http://127.0.0.1:%d/%s/%s/' % (PORT, IDXNAME,  indtyp) + str(address["id"])
+    github_url = 'http://127.0.0.1:%d/%s/%s/' % (LOAD_PORT, IDXNAME,  indtyp) + str(address["id"])
     data = json.dumps(address)
     logger.debug(address)
 
@@ -846,7 +850,7 @@ def index_addresses(prm):
                 p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
                 FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
                         p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
-                    FROM test.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                    FROM develop_us24510.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
@@ -862,7 +866,7 @@ def index_addresses(prm):
             WHERE not (property_address ~ ' (NE|NW|SE|SW)$' or property_address ~ ' (NE|NW|SE|SW) ')
             """)
         cursor.execute("""DELETE FROM owner_point_temp  o
-            WHERE exists (SELECT 1 FROM temp.address_points a WHERE o.property_address = a.fulladdress)
+            WHERE exists (SELECT 1 FROM temp_us24510.address_points a WHERE o.property_address = a.fulladdress)
             """)
 
         cursor.execute("""CREATE TEMP TABLE address_list_words as (
@@ -917,17 +921,17 @@ def index_neighborhoods(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
-            'WASHINGTON' as city,
-            'DC' as state,
-            'CREATE_DCZ'::TEXT as domain, 0 as normative,
+        cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.label as name,
+            'BALTIMORE' as city,
+            'MD' as state,
+            'CREATE_BaCiZ'::TEXT as domain, 0 as normative,
             'G' as class,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
-                    FROM temp.create_nbhd
+                (SELECT label, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
+                    FROM temp_us24510.neighborhoods
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
@@ -977,7 +981,7 @@ def index_submarket_commercial(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT objectid::TEXT, replace(a.name, '_', ' ') as name,
-            'WASHINGTON' as city,
+            'BALTIMORE' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
@@ -985,7 +989,7 @@ def index_submarket_commercial(prm):
             st_asgeojson(a.geometry) as geometry
             FROM
                 (SELECT submarket as name, id as objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry
-                    FROM temp.submarket_commercial_nbhd
+                    FROM temp_us24510.submarket_commercial_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
@@ -1032,7 +1036,7 @@ def index_submarket_residential(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT objectid::TEXT, name,
-            'WASHINGTON' as city,
+            'BALTIMORE' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
@@ -1040,7 +1044,7 @@ def index_submarket_residential(prm):
             st_asgeojson(a.geometry) as geometry
             FROM
                 (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.00001) as geometry
-                    FROM temp.submarket_residential_nbhd
+                    FROM temp_us24510.submarket_residential_nbhd
                     WHERE st_npoints(geometry) > 3)  a""")
         result = cursor.fetchall()
         for data in result:
@@ -1087,7 +1091,7 @@ def index_postalcode(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT geoid10::TEXT as objectid, a.name,
-            'WASHINGTON' as city,
+            'BALTIMORE' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
@@ -1095,8 +1099,8 @@ def index_postalcode(prm):
             st_asgeojson(a.geometry) as geometry
             FROM
                 (SELECT z.zcta5ce10 as name, z.geoid10, st_simplifypreservetopology(st_cleangeometry(z.geometry),0.00001) as geometry
-                    FROM temp.census_zcta5 z
-                    WHERE z.zcta5ce10 in (SELECT f.zcta5ce10 FROM temp.dc_census_face f WHERE
+                    FROM temp_us24510.census_zcta5 z
+                    WHERE z.zcta5ce10 in (SELECT f.zcta5ce10 FROM temp_us24510.dc_census_face f WHERE
                        f.statefp10 = '11') )  as a""")
         result = cursor.fetchall()
         for data in result:
@@ -1139,14 +1143,14 @@ def index_market(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT objectid::TEXT, name,
-            'WASHINGTON' as city,
+            'BALTIMORE' as city,
             'DC' as state,
             'create.io'::TEXT as domain, 0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_boundary)  a""")
+                (SELECT 'Washington, DC' as name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp_us24510.dc_boundary)  a""")
         result = cursor.fetchall()
         for data in result:
             address = {"id": data[0].strip(),
@@ -1195,7 +1199,7 @@ def index_quadrant(prm):
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp.dc_quadrants)  a""")
+                (SELECT name, objectid, st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry FROM temp_us24510.dc_quadrants)  a""")
         result = cursor.fetchall()
         for data in result:
             address_entry = data[1].upper()
@@ -1227,17 +1231,17 @@ def main_loop():
     if (not os.path.isdir(OutputDir) ):
         os.mkdir(OutputDir)
 
-    index_addresses({"reset": True, "type": "address",  "descr": "Address"})
-    index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
+    #index_addresses({"reset": True, "type": "address",  "descr": "Address"})
+    #index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
 
     index_neighborhoods({"reset": True, "type": "neighborhood",  "descr": "Neighborhood"})
 
-    index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
-    index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
+    #index_submarket_commercial({"reset": True, "type": "SMC",  "descr": "Commercial Submarket"})
+    #index_submarket_residential({"reset": True, "type": "SMR",  "descr": "Residential Submarket"})
 
-    index_market({"reset": True, "type": "market",  "descr": "Market"})
-    index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
-    index_quadrant({"reset": True, "type": "quadrant",  "descr": "Quadrant of City"})
+    #index_market({"reset": True, "type": "market",  "descr": "Market"})
+    #index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
+    #index_quadrant({"reset": True, "type": "quadrant",  "descr": "Quadrant of City"})
 
 
     if (RUNLIVE == False):
