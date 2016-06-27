@@ -46,13 +46,13 @@ split -l 10000 batch.json tmp/bq
 # the -c flag enables compression
 
 for i in tmp/bq??; do
-    curl -XPOST localhost:9200/_bulk --data-binary  @${i}
+    curl -XPOST localhost:${ES_LOAD_PORT}/_bulk --data-binary  @${i}
     echo ""
 done 
 
 
 # The actions below are atomic, in that both occur in the same instant
-curl -XPOST 'http://localhost:9200/_aliases' -d '
+curl -XPOST "http://localhost:${ES_LOAD_PORT}/_aliases" -d '
 {
     "actions" : [
         { "remove" : { "index" : "'$ES_Index'", "alias" : "gdc" } },
@@ -60,6 +60,6 @@ curl -XPOST 'http://localhost:9200/_aliases' -d '
     ]
 }'
 
-curl -XGET 'http://localhost:9200/_aliases'
+curl -XGET 'http://localhost:${ES_LOAD_PORT}/_aliases'
 
 
