@@ -24,7 +24,10 @@ RUNLIVE = False
 BATCH =  cStringIO.StringIO()
 BATCH_PRE = cStringIO.StringIO()
 
-PORT=int(os.environ.get('PORT', 9200))
+# this is the operational port for ElasticSearch
+PORT=int(os.environ.get('ES_PORT', 9200))
+# this is the port to use when loading data to the geocoder ElasticSearch Server
+LOAD_PORT=int(os.environ.get('ES_LOAD_PORT', 9200))
 
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
@@ -62,7 +65,7 @@ if DB_INSTANCE != 'test':
 else:
     DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
 # print the connection string we will use to connect
-print "Connecting to database\n ->%s" % (DB_CONNECTION_STRING)
+logger.info('''Connecting to database\n ->%s''' % (DB_CONNECTION_STRING))
 
 #curl -XPOST 'http://localhost:9200/_aliases' -d '
 #{
