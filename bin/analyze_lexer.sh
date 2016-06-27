@@ -2,6 +2,6 @@
 
 # review the lexical analyzer
 
-curl localhost:9200/geodc_b/_analyze?complete_address -d "5864 C St NW"
+curl localhost:${ES_PORT}/geodc_b/_analyze?complete_address -d "5864 C St NW"
 
 
