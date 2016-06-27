@@ -6,7 +6,7 @@ Scripts to build the geocoder index
 1. brew install virtual_env
 
 ### setup python virtual environment
-1. virtual_env venv
+1. virtualenv venv --system-site-packages
 1. venv/bin/easy_install pycurl
 1. venv/bin/pip install -r requirements.txt
 
