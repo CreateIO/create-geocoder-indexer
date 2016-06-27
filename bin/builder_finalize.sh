@@ -4,7 +4,7 @@
 set -e
 
 dt=`date +%Y%m%d`
-file="gdc_${dt}.zip"
+file="baci_${dt}.zip"
 
 # if either of data/batch.json or data/batch_pre.sh are missing, we need to re-run builder.py
 if [ ! -r data/batch_pre.sh -o -r data/batch_pre.json ]; then
