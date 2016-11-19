@@ -432,7 +432,7 @@ def cardinal_number(address):
     return address
 
 def strip_type(address):
-    
+
     # these words are all occur in more than 5% of the addresses for the jurisdiction
     address = re.sub(r' STREET',  ' ',  address)
     address = re.sub(r' COURT',  ' ',  address)
@@ -464,7 +464,7 @@ def strip_type(address):
     return address
 
 def expand_abbr(address):
-    
+
     # un abbreviate things before indexing, some will get re-abbreviated later
     address = re.sub(r' ST ', ' STREET ', address)
     address = re.sub(r' CT ', ' COURT ', address)
@@ -473,13 +473,13 @@ def expand_abbr(address):
     address = re.sub(r' RD ', ' ROAD ', address)
     address = re.sub(r' SQ ',' SQUARE ', address)
     address = re.sub(r' QTR ', ' QUARTER ', address)
-    
+
     return address
-    
+
 def abbr_Type(address):
-    
+
     # this step  creates a version of the address to support index matching
-    
+
     # abbreviate address street types with the USPS preferred abbreviations
     address = re.sub(r' STREET',  ' ST',  address)
     address = re.sub(r' COURT',  ' CT',  address)
@@ -520,7 +520,7 @@ def abbr_lead(address):
 def super_core_address(address):
     # this is an attempt to remove all words with a greater frequency than 15%
     address = strip_type(address)
-    
+
     # remove a tailing quadrant ot directional
     address = re.sub(r' (NE|NW|SE|SW)$',  ' ',  address)
     address = re.sub(r'  ',  ' ',  address)
@@ -543,9 +543,9 @@ def pad_grammar(address):
     address = re.sub(r'-',  ' - ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  ' ',  address)
-    
+
     return address
-    
+
 def core_address(address):
     # strip leading  Directionality
     # IGNORE FOR NYC at this time
@@ -563,7 +563,7 @@ def core_address(address):
     return address
 
 def alt_addresses(address):
-    
+
     alts = [address]
 
     address = strip_grammar(address)
@@ -645,7 +645,7 @@ def alt_address(address, force):
         new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)
     if ( new_address == address):
         new_address = re.sub(r'CENTRAL BUSINESS DISTRICT',  'CBD',  address)
-        
+
     # attempt to convert 11th => eleventh
     test_address = number_cardinal(new_address)
     if (test_address == new_address):
@@ -852,17 +852,17 @@ def index_addresses(prm):
         cursor.execute("""CREATE TEMP TABLE address_list_temp AS (SELECT
             to_char(a.addressid, 'mar_000000000000000D')::TEXT as indexable_id,
             a.hs_num || ' ' || a.street_nm as fulladdress,
-            'New York' as city, 
-            'NY' as state, 
-            a.zipcode::TEXT, 
+            'New York' as city,
+            'NY' as state,
+            a.zipcode::TEXT,
             a.hs_num::TEXT as addrnum,
             p.parcel_id,
-            (p.local_ids[0])::TEXT as local_id, 
-            'BBL' as local_desc, 
+            (p.local_ids[0])::TEXT as local_id,
+            'BBL' as local_desc,
             p.current_use_category as addr_use,
             st_asgeojson(st_expand(a.geometry, 0.0000001)) as extent,
             st_asgeojson(a.geometry) as location,
-            (CASE 
+            (CASE
                 WHEN ((p.zones)->'jurisdiction') = 'MN' THEN 'Manhattan'
                 WHEN ((p.zones)->'jurisdiction') = 'BX' THEN 'Bronx'
                 WHEN ((p.zones)->'jurisdiction') = 'BK' THEN 'Brooklyn'
@@ -949,18 +949,39 @@ def index_addresses(prm):
 
         cursor.execute("""INSERT INTO address_list_temp (indexable_id, fulladdress, city, state, zipcode, local_id, local_desc, addrnum,
             extent, location, front_vect, neighborhood, camera, proper_address)  (
-            SELECT 'OTR_' || property_id::TEXT, property_address, 'NEW YORK', 'NY', '', local_id, 'SSL',
-            coalesce(ax[1], '0') as addrnum,
-            st_asgeojson(st_expand(geometry, 0.0000001)) as extent,
-            st_asgeojson(geometry) as location,
-            coalesce(front_vect,'{}')::TEXT as front_vect,
-            ''::TEXT as neighborhood,
-            '{}'::TEXT as camera,
-            property_address
+            SELECT 'OTR_' || property_id::TEXT, property_address,
+                'NEW YORK',
+                'NY',
+                '',
+                local_id,
+                'SSL',
+                coalesce(ax[1], '0') as addrnum,
+                st_asgeojson(st_expand(geometry, 0.0000001)) as extent,
+                st_asgeojson(geometry) as location,
+                coalesce(front_vect,'{}')::TEXT as front_vect,
+                ''::TEXT as neighborhood,
+                '{}'::TEXT as camera,
+                property_address
             FROM  owner_point_temp o,
                 regexp_matches(property_address, '^[0-9]*') as ax
                 )""")
-        cursor.execute("""SELECT * FROM address_list_temp""")
+        cursor.execute("""SELECT
+                indexable_id,
+                fulladdress,
+                city,
+                state,
+                zipcode,
+                addrnum,
+                local_id,
+                local_desc,
+                addr_use,
+                extent,
+                location,
+                front_vect,
+                neighborhood,
+                camera,
+                proper_address
+            FROM address_list_temp""")
         result = cursor.fetchall()
         for data in result:
             submit_address(data,  typeName)
