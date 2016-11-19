@@ -10,6 +10,7 @@ import pycurl
 import cStringIO
 import time
 import re
+#from data.common.tools import add_index,  db_roles
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.DEBUG)
@@ -29,6 +30,7 @@ PORT=int(os.environ.get('PORT', 9200))
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
 DB_SCHEMA = os.environ.get('CREATE_DB_SCHEMA')
+TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
 
 DB_NAME = os.environ.get('DB_NAME')
 DB_INSTANCE = os.environ.get('DB_INSTANCE')
@@ -668,6 +670,16 @@ def alt_core_address(address):
     return address
 
 def submit_address(data,  typeName):
+    # if the address does not have an extent then ignore it
+    # this protects against building geocoder indexes for things that lack a geometry
+    if data[9] == None:
+        return
+    if data[10] == None:
+        data[10] = ''
+    if data[12] == None:
+        data[12] = ''
+    if data[13] == None:
+        data[13] = ''
 
     # expand the address to all alternatives (non - alias)
     alts = alt_addresses(data[1])
@@ -792,7 +804,35 @@ def index_landmarks(prm):
 
     pass
 
+def add_index(idxfield, table, using=None):
+    if len(table.split('.')) > 1:
+        schema = table.split('.')[0]
+        table = table.split('.')[1]
+
+    assert table > ''
+    assert schema > ''
+
+    idx = (table + "_" + idxfield + "_ind").lower()
+
+    with db_cursor() as cursor:
+        cursor.execute("SELECT count(*) as cnt FROM pg_indexes WHERE schemaname = '" + schema + "' and indexname = '" + idx + "'")
+        result = cursor.fetchone()
+        if result[0] != 1:
+            logger.debug('''create index on %s . %s ( %s ) '''%(schema, table, idxfield))
+            # DO NOT Blindly drop and recreate indexes
+            # INDEX may have modifiers that will get lost
+            # cursor.execute('DROP INDEX IF EXISTS ' + schema + '.' + idx)
+            if using:
+                cursor.execute('CREATE INDEX ' + idx + ' ON ' + schema + '.' + table + ' USING ' + using + '("' + idxfield + '")')
+            else:
+                cursor.execute('CREATE INDEX ' + idx + ' ON ' + schema + '.' + table + ' ("' + idxfield + '")')
+        cursor.execute('SELECT now()')
+
 def index_addresses(prm):
+
+    addr_point_tbl = TEMP_SCHEMA + ".address_points"
+    parcel_tbl = DB_SCHEMA + ".parcels"
+    property_tbl = DB_SCHEMA + ".properties"
 
     if 'type' in prm:
         typeName = prm['type']
@@ -805,6 +845,7 @@ def index_addresses(prm):
         drop_index(IDXNAME, typeName)
         set_address_mapping(typeName)
 
+    add_index('geometry', addr_point_tbl, 'GIST')
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""DROP TABLE IF EXISTS address_list_temp""")
@@ -832,16 +873,20 @@ def index_addresses(prm):
             '{}'::TEXT as camera,
             '{}'::TEXT as front_vect,
             a.hs_num || ' ' || a.street_nm  as proper_address
-            FROM temp_us3651000.address_points a LEFT OUTER JOIN
-                %s.parcels p ON (st_intersects(p.geometry, a.geometry)))""" % (DB_SCHEMA))
+            FROM %s a LEFT OUTER JOIN
+                %s p ON (st_intersects(p.geometry, a.geometry))
+            WHERE a.geometry IS NOT NULL)""" % (addr_point_tbl, parcel_tbl))
+        logger.debug('''  inserted %d from address_points''' %(cursor.rowcount))
 
-        cursor.execute('''UPDATE address_list_temp SET
+        cursor.execute('''UPDATE address_list_temp a SET
                 camera = p.camera_vect,
                 front_vect = p.front_vect
             FROM
-                %s.properties p
+                %s p
             WHERE
-                p.parcel_id = a.parcel_id''' %(DB_SCHEMA))
+                p.parcel_id = a.parcel_id''' %(property_tbl))
+        logger.debug('''  updated %d address_points from properties''' %(cursor.rowcount))
+
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -870,8 +915,11 @@ def index_addresses(prm):
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
+                WHERE p.geometry IS NOT NULL
             )""")
+        logger.debug('''  inserted %d new address_points from addresses in properties''' %(cursor.rowcount))
 
+        # strip apt and sute and unit info from addresses
         cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' Unit: .*', '')
             WHERE  (property_address ~* ' UNIT: ')
             """)
