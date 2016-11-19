@@ -917,7 +917,7 @@ def index_addresses(prm):
                 addrnum,
                 local_id,
                 local_desc,
-                addr_use,
+                coalesce(addr_use,''),
                 extent,
                 location,
                 front_vect,
