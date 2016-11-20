@@ -972,14 +972,14 @@ def index_addresses(prm):
                 state,
                 zipcode,
                 addrnum,
-                local_id,
+                coalesce(local_id,''),
                 local_desc,
                 coalesce(addr_use,''),
                 extent,
                 location,
-                front_vect,
+                coalesce(front_vect,{}),
                 neighborhood,
-                camera,
+                coalesce(camera, '{}'),
                 proper_address
             FROM address_list_temp""")
         result = cursor.fetchall()
