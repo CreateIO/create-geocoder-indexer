@@ -674,12 +674,6 @@ def submit_address(data,  typeName):
     # this protects against building geocoder indexes for things that lack a geometry
     if data[9] == None:
         return
-    if data[10] == None:
-        data[10] = ''
-    if data[12] == None:
-        data[12] = ''
-    if data[13] == None:
-        data[13] = ''
 
     # expand the address to all alternatives (non - alias)
     alts = alt_addresses(data[1])
@@ -746,6 +740,7 @@ def index_landmarks(prm):
             '{}'
             FROM
                 %s a
+            WHERE city = 'New York'
             UNION ALL
             SELECT a.nris_refnum::TEXT,
             a.resname as name,
@@ -763,6 +758,7 @@ def index_landmarks(prm):
             '{}'
             FROM
                 %s a
+            WHERE city = 'New York'
             UNION ALL
             SELECT a.nris_refnum::TEXT,
             a.resname as name,
@@ -780,6 +776,7 @@ def index_landmarks(prm):
             '{}'
             FROM
                 %s a
+            WHERE city = 'New York'
             UNION ALL
             SELECT a.nris_refnum::TEXT,
             a.resname as name,
@@ -797,6 +794,7 @@ def index_landmarks(prm):
             '{}'
             FROM
                 %s a
+            WHERE city = 'New York'
                 """ %(landmark_poly_tbl,  landmark_point_tbl, place_poly_tbl, place_point_tbl))
         result = cursor.fetchall()
 
@@ -895,7 +893,7 @@ def index_addresses(prm):
             a.zipcode::TEXT,
             a.hs_num::TEXT as addrnum,
             p.parcel_id,
-            (p.local_ids[0])::TEXT as local_id,
+            (p.local_ids[1])::TEXT as local_id,
             'BBL' as local_desc,
             p.current_use_category as addr_use,
             st_asgeojson(st_expand(a.geometry, 0.0000001)) as extent,
@@ -917,14 +915,14 @@ def index_addresses(prm):
         logger.debug('''  inserted %d from address_points''' %(cursor.rowcount))
 
         cursor.execute('''UPDATE address_list_temp a SET
-                camera = p.camera_vect,
-                front_vect = p.front_vect
+                camera = (CASE WHEN (p.camera_vect)::TEXT > '{}' THEN p.camera_vect ELSE '{}' END)::TEXT,
+                front_vect = (CASE WHEN (p.front_vect)::TEXT > '{}' THEN p.front_vect ELSE '{}' END)::TEXT,
+                local_id = coalesce(a.local_id, p.local_id, '')
             FROM
                 %s p
             WHERE
                 p.parcel_id = a.parcel_id''' %(property_tbl))
         logger.debug('''  updated %d address_points from properties''' %(cursor.rowcount))
-
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -992,7 +990,7 @@ def index_addresses(prm):
                 'NY',
                 '',
                 local_id,
-                'SSL',
+                'BBL',
                 coalesce(ax[1], '0') as addrnum,
                 st_asgeojson(st_expand(geometry, 0.0000001)) as extent,
                 st_asgeojson(geometry) as location,
@@ -1013,11 +1011,11 @@ def index_addresses(prm):
                 coalesce(local_id,''),
                 local_desc,
                 coalesce(addr_use,''),
-                extent,
+                coalesce(extent,'{}'),
                 location,
-                coalesce(front_vect,'{}'),
                 neighborhood,
                 coalesce(camera, '{}'),
+                coalesce(front_vect,'{}'),
                 proper_address
             FROM address_list_temp""")
         result = cursor.fetchall()
@@ -1029,7 +1027,7 @@ def index_addresses(prm):
             cntr += 1
     pass
 
-def index_create_neighborhoods(prm):
+def index_neighborhoods(prm):
 
     if 'type' in prm:
         typeName = prm['type']
@@ -1088,7 +1086,7 @@ def index_create_neighborhoods(prm):
 
     pass
 
-def index_neighborhoods(prm):
+def index_create_neighborhoods(prm):
 
     if 'type' in prm:
         typeName = prm['type']
@@ -1281,6 +1279,7 @@ def index_postalcode(prm):
             zcta5ce10, st_union(geometry) as geometry
             FROM
                 %s a
+            WHERE zcta5ce10 IS NULL
             GROUP BY 1,2
             )''' %(zip_tbl))
         cursor.execute("""SELECT 
@@ -1296,6 +1295,8 @@ def index_postalcode(prm):
                 (SELECT z.zcta5ce10 as name, z.geoid10, 
                         st_simplifypreservetopology(st_cleangeometry(z.geometry),0.00001) as geometry
                     FROM zip_tmp z
+                    WHERE
+                        z.zcta5ce10 IS NOT NULL
                     )  as a""")
         result = cursor.fetchall()
         for data in result:
@@ -1372,6 +1373,7 @@ def index_market(prm):
     pass
 
 def index_borough(prm):
+    boro_tbl = "temp_us3651000" + ".borough_boundaries"
 
     if 'type' in prm:
         typeName = prm['type']
@@ -1387,17 +1389,18 @@ def index_borough(prm):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT objectid::TEXT, 
-            boro_name,
+            name,
             'NEW YORK' as city,
             'NY' as state,
-            'create.io'::TEXT as domain, 0 as normative,
+            'NYC'::TEXT as domain,
+            0 as normative,
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(st_pointonsurface(a.geometry)) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, 
+                (SELECT boro_name as name, boro_code, boro_code as objectid, 
                     st_simplifypreservetopology(st_cleangeometry(geometry),0.0001) as geometry 
-                FROM temp.nyc_borough_boundaries)  a""")
+                FROM %s)  a""" %(boro_tbl))
         result = cursor.fetchall()
         for data in result:
             address_entry = data[1].upper()
