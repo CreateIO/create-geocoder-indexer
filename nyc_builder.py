@@ -714,6 +714,8 @@ def submit_address(data,  typeName):
 def index_landmarks(prm):
     landmark_poly_tbl = "temp_us3651000" + ".nris_landmark_polygon"
     landmark_point_tbl = "temp_us3651000" + ".nris_landmark_point"
+    place_poly_tbl = "temp_us3651000" + ".nris_historic_place_polygon"
+    place_point_tbl = "temp_us3651000" + ".nris_historic_place_point"
 
     if 'type' in prm:
         typeName = prm['type']
@@ -735,7 +737,7 @@ def index_landmarks(prm):
             '',
             'NRIS_Landmark'::TEXT as domain,
             0 as normative,
-            a.is_extant,
+            a.bnd_type,
             a.restype,
             '',
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
@@ -752,7 +754,7 @@ def index_landmarks(prm):
             '',
             'NRIS_Landmark'::TEXT as domain,
             0 as normative,
-            a.is_extant,
+            a.bnd_type,
             a.restype,
             '',
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
@@ -761,7 +763,41 @@ def index_landmarks(prm):
             '{}'
             FROM
                 %s a
-                """ %(landmark_poly_tbl,  landmark_point_tbl))
+            UNION ALL
+            SELECT a.nris_refnum::TEXT,
+            a.resname as name,
+            a.city,
+            a.state,
+            '',
+            'NRIS_Landmark'::TEXT as domain,
+            0 as normative,
+            a.bnd_type,
+            a.restype,
+            '',
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(a.geometry) as location,
+            a.address as proper_address,
+            '{}'
+            FROM
+                %s a
+            UNION ALL
+            SELECT a.nris_refnum::TEXT,
+            a.resname as name,
+            a.city,
+            a.state,
+            '',
+            'NRIS_Landmark'::TEXT as domain,
+            0 as normative,
+            a.bnd_type,
+            a.restype,
+            '',
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(a.geometry) as location,
+            a.address as proper_address,
+            '{}'
+            FROM
+                %s a
+                """ %(landmark_poly_tbl,  landmark_point_tbl, place_poly_tbl, place_point_tbl))
         result = cursor.fetchall()
 
         for data in result:
