@@ -712,6 +712,8 @@ def submit_address(data,  typeName):
         alt_ctr += 1
 
 def index_landmarks(prm):
+    landmark_poly_tbl = "temp_us3651000" + ".nris_landmark_polygon"
+    landmark_point_tbl = "temp_us3651000" + ".nris_landmark_point"
 
     if 'type' in prm:
         typeName = prm['type']
@@ -726,40 +728,40 @@ def index_landmarks(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        cursor.execute("""CREATE TEMP TABLE addr_alias_fronts as (
-            SELECT a.address_id, a.fulladdress,
-                coalesce(b.front_vect,'{}')::TEXT as front_vect,
-                b.property_id, b.parcel_id,
-                a.addralias_id,
-                a.aliasname,
-                a.city,
-                a.state,
-                a.zipcode,
-                a.status,
-                a.aliastype,
-                a.ssl,
-                a.geometry
-                FROM
-                    temp.location_alias a LEFT OUTER JOIN %s.properties b
-                    ON (a.ssl = b.local_id)
-        )""" % (DB_SCHEMA))
-        cursor.execute("""SELECT a.addralias_id::TEXT,
-            a.aliasname as name,
+        cursor.execute("""SELECT a.nris_refnum::TEXT,
+            a.resname as name,
             a.city,
             a.state,
-            a.zipcode,
-            'DCMAR_Alias'::TEXT as domain,
+            '',
+            'NRIS_Landmark'::TEXT as domain,
             0 as normative,
-            a.status,
-            a.aliastype,
-            a.ssl,
+            a.is_extant,
+            a.restype,
+            '',
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
             st_asgeojson(a.geometry) as location,
-            a.fulladdress as proper_address,
-            a.front_vect
+            a.address as proper_address,
+            '{}'
             FROM
-                addr_alias_fronts a
-                """)
+                %s a
+            UNION ALL
+            SELECT a.nris_refnum::TEXT,
+            a.resname as name,
+            a.city,
+            a.state,
+            '',
+            'NRIS_Landmark'::TEXT as domain,
+            0 as normative,
+            a.is_extant,
+            a.restype,
+            '',
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(a.geometry) as location,
+            a.address as proper_address,
+            '{}'
+            FROM
+                %s a
+                """ %(landmark_poly_tbl,  landmark_point_tbl))
         result = cursor.fetchall()
 
         for data in result:
@@ -977,7 +979,7 @@ def index_addresses(prm):
                 coalesce(addr_use,''),
                 extent,
                 location,
-                coalesce(front_vect,{}),
+                coalesce(front_vect,'{}'),
                 neighborhood,
                 coalesce(camera, '{}'),
                 proper_address
@@ -1392,7 +1394,7 @@ def main_loop():
         os.mkdir(OutputDir)
 
     index_addresses({"reset": True, "type": "address",  "descr": "Address"})
-    #index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
+    index_landmarks({"reset": True, "type": "landmark",  "descr": "Landmarks"})
 
     index_neighborhoods({"reset": True, "type": "neighborhood",  "descr": "Neighborhood"})
     #index_create_neighborhoods({"reset": True, "type": "neighborhood",  "descr": "Neighborhood"})
