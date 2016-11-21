@@ -30,7 +30,6 @@ PORT=int(os.environ.get('PORT', 9200))
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
 DB_SCHEMA = os.environ.get('CREATE_DB_SCHEMA')
-TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
 
 DB_NAME = os.environ.get('DB_NAME')
 DB_INSTANCE = os.environ.get('DB_INSTANCE')
@@ -56,6 +55,8 @@ if not DB_PORT:
 
 if DB_NAME:
     logger.info("using DB_NAME from environment vars")
+
+TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
 
 #Set DB connection info
 logger.info('writing to database "%s" in instance "%s"', DB_NAME, DB_INSTANCE)
@@ -231,7 +232,7 @@ def set_address_mapping(mapname):
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
                 "alt_core_address": { "type": "string" },
-                "address_number": { "type": "integer" },
+                "address_number": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" },
                 "zipcode": { "type": "string" },
@@ -697,8 +698,8 @@ def submit_address(data,  typeName):
             "camera": json.loads(data[12]),
             "front_vect": json.loads(data[13])
         }
-        if data[5] > '':
-            address['address_number'] = int(data[5])
+        #if data[5] > '':
+        #   address['address_number'] = int(data[5])
         if alt_ctr > 0:
             address['id'] = data[0].strip() + '_%s' % (alt_ctr)
         send_address(address,  typeName)
@@ -991,7 +992,7 @@ def index_addresses(prm):
                 '',
                 local_id,
                 'BBL',
-                coalesce(ax[1], '0') as addrnum,
+                coalesce(ax[1], '') as addrnum,
                 st_asgeojson(st_expand(geometry, 0.0000001)) as extent,
                 st_asgeojson(geometry) as location,
                 coalesce(front_vect,'{}')::TEXT as front_vect,
@@ -1007,7 +1008,7 @@ def index_addresses(prm):
                 city,
                 state,
                 zipcode,
-                addrnum,
+                addrnum::text,
                 coalesce(local_id,''),
                 local_desc,
                 coalesce(addr_use,''),
@@ -1444,7 +1445,7 @@ def main_loop():
     #index_market({"reset": True, "type": "market",  "descr": "Market"})
     index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
     index_borough({"reset": True, "type": "borough",  "descr": "Borough"})
-
+    logger.debug('''finished''')
 
     if (RUNLIVE == False):
         BATCH_PRE.reset()
