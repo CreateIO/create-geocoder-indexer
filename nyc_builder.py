@@ -736,9 +736,9 @@ def index_landmarks(prm):
             a.restype,
             '',
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
-            st_asgeojson(a.geometry) as location,
+            '{}' as location,
             a.address as proper_address,
-            '{}'
+            '{}' as camera
             FROM
                 %s a
             WHERE city = 'New York'
@@ -772,9 +772,9 @@ def index_landmarks(prm):
             a.restype,
             '',
             st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
-            st_asgeojson(a.geometry) as location,
+            '{}' as location,
             a.address as proper_address,
-            '{}'
+            '{}' as camera
             FROM
                 %s a
             WHERE city = 'New York'
