@@ -948,12 +948,12 @@ def index_addresses(prm):
                 p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
                 FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
                         p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
-                    FROM test.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                    FROM %s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
                 WHERE p.geometry IS NOT NULL
-            )""")
+            )""" %(property_tbl))
         logger.debug('''  inserted %d new address_points from addresses in properties''' %(cursor.rowcount))
 
         # strip apt and sute and unit info from addresses
@@ -967,8 +967,8 @@ def index_addresses(prm):
             WHERE not (property_address ~ ' (NE|NW|SE|SW)$' or property_address ~ ' (NE|NW|SE|SW) ')
             """)
         cursor.execute("""DELETE FROM owner_point_temp  o
-            WHERE exists (SELECT 1 FROM temp.address_points a WHERE o.property_address = a.fulladdress)
-            """)
+            WHERE exists (SELECT 1 FROM %s a WHERE o.property_address = a.fulladdress)
+            """ %(addr_point_tbl))
 
         cursor.execute("""CREATE TEMP TABLE address_list_words as (
             SELECT local_id, (regexp_matches(fulladdress, '[^ ]* [^ ]*'))[1] as words FROM address_list_temp)
@@ -1030,6 +1030,7 @@ def index_addresses(prm):
 
 def index_neighborhoods(prm):
 
+    nbhd_tbl = "temp_us3651000" + ".neighborhood_names"
     if 'type' in prm:
         typeName = prm['type']
         typeDesc = prm['descr']
@@ -1053,8 +1054,8 @@ def index_neighborhoods(prm):
             st_asgeojson(a.geometry) as geometry
             FROM
                 (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
-                    FROM temp.create_nbhd
-                    WHERE st_npoints(geometry) > 3)  a""")
+                    FROM %s t
+                    WHERE st_npoints(geometry) > 3)  a""" %(nbhd_tbl))
         result = cursor.fetchall()
         for data in result:
             alts = alt_addresses(data[1].upper())
