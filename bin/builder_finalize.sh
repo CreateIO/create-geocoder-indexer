@@ -3,8 +3,17 @@
 # package the build up and save it to AWS
 set -e
 
+usage() {
+  echo "builder_finalize.sh <pfx>"
+}
+
+if [ -z "$pfx" ];then
+  usage
+  exit
+fi
+
 dt=`date +%Y%m%d`
-file="baci_${dt}.zip"
+file="g${pfx}_${dt}.zip"
 
 # if either of data/batch.json or data/batch_pre.sh are missing, we need to re-run builder.py
 if [ ! -r data/batch_pre.sh -o -r data/batch_pre.json ]; then
