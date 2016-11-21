@@ -797,6 +797,8 @@ def index_landmarks(prm):
 
 def index_addresses(prm):
 
+    property_tbl = DB_SCHEMA + ".properties"
+
     if 'type' in prm:
         typeName = prm['type']
         typeDesc = prm['descr']
@@ -831,7 +833,7 @@ def index_addresses(prm):
             a.fulladdress as proper_address
             FROM (temp.address_points a LEFT OUTER JOIN
                 temp.nbhd n ON (st_intersects(a.geometry, n.geometry)))  LEFT OUTER JOIN
-                %s.properties p ON (p.local_id = a.local_id))""" % (DB_SCHEMA))
+                %s p ON (p.local_id = a.local_id))""" % (property_tbl))
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -856,11 +858,11 @@ def index_addresses(prm):
                 p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
                 FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
                         p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
-                    FROM test.properties p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                    FROM %s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
-            )""")
+            )""" % (property_tbl))
 
         cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' Unit: .*', '')
             WHERE  (property_address ~* ' UNIT: ')
