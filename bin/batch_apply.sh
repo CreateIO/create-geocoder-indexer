@@ -52,14 +52,14 @@ done
 
 
 # The actions below are atomic, in that both occur in the same instant
-curl -XPOST "http://localhost:${ES_LOAD_PORT}/_aliases" -d '
+curl -XPOST localhost:${ES_LOAD_PORT}/_aliases -d '
 {
     "actions" : [
-        { "remove" : { "index" : "'$ES_Index'", "alias" : "gdc" } },
-        { "add" : { "index" : "'$ES_Index'", "alias" : "gdc" } }
+        { "remove" : { "index" : "'$OLD_ES_Index'", "alias" :  "'$ES_MKT_Index'" } },
+        { "add" : { "index" : "'$ES_Index'", "alias" :  "'$ES_MKT_Index'" } }
     ]
 }'
 
-curl -XGET 'http://localhost:${ES_LOAD_PORT}/_aliases'
+curl -XGET localhost:${ES_LOAD_PORT}/_aliases
 
 
