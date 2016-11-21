@@ -60,10 +60,8 @@ TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
 
 #Set DB connection info
 logger.info('writing to database "%s" in instance "%s"', DB_NAME, DB_INSTANCE)
-if DB_INSTANCE != 'test':
-    DB_CONNECTION_STRING = 'host=%s.cvwdsktow3o7.us-east-1.rds.amazonaws.com dbname=%s user=%s password=%s' % (DB_INSTANCE, DB_NAME, DB_USER, DB_PASS)
-else:
-    DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
+DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
+
 # print the connection string we will use to connect
 print "Connecting to database\n ->%s" % (DB_CONNECTION_STRING)
 
@@ -948,7 +946,7 @@ def index_addresses(prm):
                 p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
                 FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
                         p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
-                    FROM %s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                    FROM """ + """%s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
@@ -967,7 +965,7 @@ def index_addresses(prm):
             WHERE not (property_address ~ ' (NE|NW|SE|SW)$' or property_address ~ ' (NE|NW|SE|SW) ')
             """)
         cursor.execute("""DELETE FROM owner_point_temp  o
-            WHERE exists (SELECT 1 FROM %s a WHERE o.property_address = a.fulladdress)
+            WHERE exists (SELECT 1 FROM %s a WHERE o.property_address = (a.hs_num || ' ' || a.street_nm))
             """ %(addr_point_tbl))
 
         cursor.execute("""CREATE TEMP TABLE address_list_words as (
