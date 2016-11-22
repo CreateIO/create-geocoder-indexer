@@ -121,7 +121,7 @@ def send_command_live(cmd,  idx,  typ):
 
 def send_command_batch(cmd,  idx,  typ):
     BATCH_PRE.write("""
-curl -X%s 'http://localhost:9200/%s/%s'\n
+curl -X%s 'http://localhost:'${ES_LOAD_PORT}'/%s/%s'\n
 """ % (cmd, idx, typ))
     pass
 
@@ -159,7 +159,7 @@ def send_action_live(idx,  typ,  data):
 
 def send_action_batch(idx,  typ,  data):
     BATCH_PRE.write("""
-curl -XPOST 'http://localhost:9200/%s/%s' -d '%s'\n
+curl -XPOST 'http://localhost:'${ES_LOAD_PORT}'/%s/%s' -d '%s'\n
 """ % (idx, typ,  json.dumps(data) ))
     pass
 
