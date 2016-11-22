@@ -434,6 +434,9 @@ def cardinal_number(address):
 
 def strip_type(address):
 
+    if address == None:
+        return ''
+
     # these words are all occur in more than 5% of the addresses for the jurisdiction
     address = re.sub(r' STREET',  ' ',  address)
     address = re.sub(r' COURT',  ' ',  address)
@@ -529,6 +532,9 @@ def super_core_address(address):
     return address
 
 def strip_grammar(address):
+    if address == None:
+        return ''
+
     address = re.sub(r'&',  ' and ',  address)
     address = re.sub(r'/',  ' and ',  address)
     address = re.sub(r'-',  ' and ',  address)
@@ -553,6 +559,9 @@ def core_address(address):
     #address = re.sub(r'^NORTH ',  '',  address)
 
     # strip tailing Quadrant data
+    if address == None:
+        return ''
+
     address = re.sub(r' (NE|NW|SE|SW)$',  ' ',  address)
 
     #convert Streets to Types
@@ -822,7 +831,7 @@ def index_addresses(prm):
             'DC' as state,
             a.zipcode::TEXT,
             a.addrnum::TEXT,
-            a.local_id::TEXT,
+            a.ssl::TEXT as local_id,
             'SSL' as local_desc,
             a.res_type as addr_use,
             st_asgeojson(st_expand(a.geometry, 0.0000001)) as extent,
@@ -833,7 +842,7 @@ def index_addresses(prm):
             a.fulladdress as proper_address
             FROM (temp.address_points a LEFT OUTER JOIN
                 temp.nbhd n ON (st_intersects(a.geometry, n.geometry)))  LEFT OUTER JOIN
-                %s p ON (p.local_id = a.local_id))""" % (property_tbl))
+                %s p ON (p.local_id = a.ssl))""" % (property_tbl))
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -858,7 +867,7 @@ def index_addresses(prm):
                 p.geometry, p.property_id, p.property_city, p.property_state, p.property_zip, p.front_vect, p.property_quadrant
                 FROM (SELECT p.local_id, p.property_address || ' ' as property_address, p.geometry, p.property_id,
                         p.property_city, p.property_state, p.property_zip, p.front_vect, p.core->'quadrant' as property_quadrant
-                    FROM %s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
+                    FROM """ + """%s p LEFT OUTER JOIN address_list_temp a ON (p.local_id = a.local_id)
                         WHERE
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
@@ -922,9 +931,9 @@ def index_addresses(prm):
                 coalesce(addr_use,''),
                 extent,
                 location,
-                front_vect,
                 neighborhood,
                 camera,
+                front_vect,
                 proper_address
             FROM address_list_temp""")
         result = cursor.fetchall()
@@ -1079,9 +1088,9 @@ def index_submarket_residential(prm):
         result = cursor.fetchall()
         for data in result:
             # place padding around ,/-&. to make the combined bit indexable
+            address_entry = data[1].upper()
             address_entry = pad_grammar(address_entry)
 
-            address_entry = data[1].upper()
             address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": address_entry,
