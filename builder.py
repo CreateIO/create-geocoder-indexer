@@ -10,6 +10,7 @@ import pycurl
 import cStringIO
 import time
 import re
+#from data.common.tools import add_index,  db_roles
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s', level=logging.DEBUG)
@@ -46,8 +47,6 @@ if not DB_PASS:
     sys.stderr.write('Password not found: please set environment variable CREATE_DB_PASS\n')
     sys.exit(-1)
 
-if not DB_INSTANCE:
-    DB_INSTANCE = 'test'
 
 if not DBHOST:
     DBHOST = 'localhost'
@@ -58,12 +57,12 @@ if not DB_PORT:
 if DB_NAME:
     logger.info("using DB_NAME from environment vars")
 
+TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
+
 #Set DB connection info
 logger.info('writing to database "%s" in instance "%s"', DB_NAME, DB_INSTANCE)
-if DB_INSTANCE != 'test':
-    DB_CONNECTION_STRING = 'host=%s.cvwdsktow3o7.us-east-1.rds.amazonaws.com dbname=%s user=%s password=%s' % (DB_INSTANCE, DB_NAME, DB_USER, DB_PASS)
-else:
-    DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
+DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
+
 # print the connection string we will use to connect
 logger.info('''Connecting to database\n ->%s''' % (DB_CONNECTION_STRING))
 
@@ -123,7 +122,7 @@ def send_command_live(cmd,  idx,  typ):
 
 def send_command_batch(cmd,  idx,  typ):
     BATCH_PRE.write("""
-curl -X%s 'http://localhost:9200/%s/%s'\n
+curl -X%s 'http://localhost:'${ES_LOAD_PORT}'/%s/%s'\n
 """ % (cmd, idx, typ))
     pass
 
@@ -161,7 +160,7 @@ def send_action_live(idx,  typ,  data):
 
 def send_action_batch(idx,  typ,  data):
     BATCH_PRE.write("""
-curl -XPOST 'http://localhost:9200/%s/%s' -d '%s'\n
+curl -XPOST 'http://localhost:'${ES_LOAD_PORT}'/%s/%s' -d '%s'\n
 """ % (idx, typ,  json.dumps(data) ))
     pass
 
@@ -232,7 +231,7 @@ def set_address_mapping(mapname):
                 "core_address": { "type": "string" },
                 "super_core_address": { "type": "string" },
                 "alt_core_address": { "type": "string" },
-                "address_number": { "type": "integer" },
+                "address_number": { "type": "string" },
                 "city": { "type": "string" },
                 "state": { "type": "string" },
                 "zipcode": { "type": "string" },
@@ -680,6 +679,10 @@ def alt_core_address(address):
     return address
 
 def submit_address(data,  typeName):
+    # if the address does not have an extent then ignore it
+    # this protects against building geocoder indexes for things that lack a geometry
+    if data[9] == None:
+        return
 
     # expand the address to all alternatives (non - alias)
     alts = alt_addresses(data[1])
@@ -703,8 +706,8 @@ def submit_address(data,  typeName):
             "camera": json.loads(data[12]),
             "front_vect": json.loads(data[13])
         }
-        if data[5] > '':
-            address['address_number'] = int(data[5])
+        #if data[5] > '':
+        #   address['address_number'] = int(data[5])
         if alt_ctr > 0:
             address['id'] = data[0].strip() + '_%s' % (alt_ctr)
         send_address(address,  typeName)
@@ -821,8 +824,6 @@ def index_addresses(prm):
 
     cntr = 1
     with db_cursor() as cursor:
-        #cursor.exeute('''CREATE TEMPORARY TABLE''')
-
         cursor.execute("""DROP TABLE IF EXISTS address_list_temp""")
         cursor.execute("""CREATE TEMP TABLE address_list_temp AS (SELECT
             to_char(a.address_id, 'mar_000000000000000D')::TEXT as indexable_id,
@@ -843,6 +844,7 @@ def index_addresses(prm):
             FROM (temp.address_points a LEFT OUTER JOIN
                 temp.nbhd n ON (st_intersects(a.geometry, n.geometry)))  LEFT OUTER JOIN
                 %s p ON (p.local_id = a.ssl))""" % (property_tbl))
+        logger.debug('''  inserted %d from address_points''' %(cursor.rowcount))
 
         cursor.execute("""CREATE INDEX address_list_temp__ind on address_list_temp(local_id)""")
         # add place descriptors from the OTR owner_point file
@@ -872,7 +874,9 @@ def index_addresses(prm):
                             a.local_id is NULL and
                             trim(property_address) > '' and split_part(property_address,' ',1) !~ '[A-Z]+' ) as p
             )""" % (property_tbl))
+        logger.debug('''  inserted %d new address_points from addresses in properties''' %(cursor.rowcount))
 
+        # strip apt and suite and unit info from addresses
         cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' Unit: .*', '')
             WHERE  (property_address ~* ' UNIT: ')
             """)
@@ -925,15 +929,15 @@ def index_addresses(prm):
                 city,
                 state,
                 zipcode,
-                addrnum,
-                local_id,
+                addrnum::text,
+                coalesce(local_id,''),
                 local_desc,
                 coalesce(addr_use,''),
-                extent,
+                coalesce(extent,'{}'),
                 location,
                 neighborhood,
-                camera,
-                front_vect,
+                coalesce(camera, '{}'),
+                coalesce(front_vect,'{}'),
                 proper_address
             FROM address_list_temp""")
         result = cursor.fetchall()
@@ -1281,7 +1285,7 @@ def main_loop():
     index_market({"reset": True, "type": "market",  "descr": "Market"})
     index_postalcode({"reset": True, "type": "postalcode",  "descr": "ZIP Code"})
     index_quadrant({"reset": True, "type": "quadrant",  "descr": "Quadrant of City"})
-
+    logger.debug('''finished''')
 
     if (RUNLIVE == False):
         BATCH_PRE.reset()

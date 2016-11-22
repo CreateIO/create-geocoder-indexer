@@ -25,7 +25,10 @@ RUNLIVE = False
 BATCH =  cStringIO.StringIO()
 BATCH_PRE = cStringIO.StringIO()
 
-PORT=int(os.environ.get('PORT', 9200))
+# this is the operational port for ElasticSearch
+PORT=int(os.environ.get('ES_PORT', 9200))
+# this is the port to use when loading data to the geocoder ElasticSearch Server
+LOAD_PORT=int(os.environ.get('ES_LOAD_PORT', 9200))
 
 DB_USER = os.environ.get('CREATE_DB_USER')
 DB_PASS = os.environ.get('CREATE_DB_PASS')
@@ -44,8 +47,6 @@ if not DB_PASS:
     sys.stderr.write('Password not found: please set environment variable CREATE_DB_PASS\n')
     sys.exit(-1)
 
-if not DB_INSTANCE:
-    DB_INSTANCE = 'test'
 
 if not DBHOST:
     DBHOST = 'localhost'
@@ -63,7 +64,7 @@ logger.info('writing to database "%s" in instance "%s"', DB_NAME, DB_INSTANCE)
 DB_CONNECTION_STRING = 'host=%s dbname=%s user=%s password=%s port=%s' % (DBHOST, DB_NAME, DB_USER, DB_PASS, DB_PORT)
 
 # print the connection string we will use to connect
-print "Connecting to database\n ->%s" % (DB_CONNECTION_STRING)
+logger.info('''Connecting to database\n ->%s''' % (DB_CONNECTION_STRING))
 
 #curl -XPOST 'http://localhost:9200/_aliases' -d '
 #{
@@ -432,6 +433,9 @@ def cardinal_number(address):
 
 def strip_type(address):
 
+    if address == None:
+        return ''
+
     # these words are all occur in more than 5% of the addresses for the jurisdiction
     address = re.sub(r' STREET',  ' ',  address)
     address = re.sub(r' COURT',  ' ',  address)
@@ -527,6 +531,9 @@ def super_core_address(address):
     return address
 
 def strip_grammar(address):
+    if address == None:
+        return ''
+
     address = re.sub(r'&',  ' and ',  address)
     address = re.sub(r'/',  ' and ',  address)
     address = re.sub(r'-',  ' and ',  address)
@@ -551,6 +558,9 @@ def core_address(address):
     #address = re.sub(r'^NORTH ',  '',  address)
 
     # strip tailing Quadrant data
+    if address == None:
+        return ''
+
     address = re.sub(r' (NE|NW|SE|SW)$',  ' ',  address)
 
     #convert Streets to Types
@@ -954,7 +964,7 @@ def index_addresses(prm):
             )""" %(property_tbl))
         logger.debug('''  inserted %d new address_points from addresses in properties''' %(cursor.rowcount))
 
-        # strip apt and sute and unit info from addresses
+        # strip apt and suite and unit info from addresses
         cursor.execute("""UPDATE owner_point_temp SET property_address = regexp_replace(property_address, ' Unit: .*', '')
             WHERE  (property_address ~* ' UNIT: ')
             """)
@@ -1232,9 +1242,9 @@ def index_submarket_residential(prm):
         result = cursor.fetchall()
         for data in result:
             # place padding around ,/-&. to make the combined bit indexable
+            address_entry = data[1].upper()
             address_entry = pad_grammar(address_entry)
 
-            address_entry = data[1].upper()
             address = {"id": data[0].strip(),
                 "proper_address": data[1],
                 "complete_address": address_entry,
