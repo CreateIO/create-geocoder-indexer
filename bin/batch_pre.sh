@@ -1,6 +1,6 @@
 #ES_Index=${idxName}
 
-idxName="geodc_c"
+idxName="${idxName}"
 
 curl -XDELETE "http://localhost:${ES_LOAD_PORT}/${idxName}/address"
 
