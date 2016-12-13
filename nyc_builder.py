@@ -409,30 +409,28 @@ def number_cardinal(address):
 
     return address
 
+def ordinal(numstr):
+    num = int(numstr)
+    SUFFIXES = {1: 'st', 2: 'nd', 3: 'rd'}
+    if num > 10  and num < 14:
+        suffix = 'th'
+    else:
+        suffix = SUFFIXES.get(num % 10, 'th')
+    return numstr + suffix
+
 def naked_cardinal(address):
     # convert from 1 to 1st
     newaddress = address
     
-    pattern = re.compile('  ([0-9]*[04-9]) ', re.IGNORECASE)
-    newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
-    
-    # 11th 12th 13th
-    if newaddress == address and address.find('1 ') > 2:
-        pattern = re.compile('  ([0-9]*1[0-9]) ', re.IGNORECASE)
-        newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
-        
-    #  1st, 2nd, 3rd
-    if newaddress == address and address.find('1 ') > 2:
-        pattern = re.compile('  ([0-9]*1) ', re.IGNORECASE)
-        newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
-    if newaddress == address and address.find('2 ') > 2:
-        pattern = re.compile('  ([0-9]*2) ', re.IGNORECASE)
-        newaddress = re.sub(pattern, " " + "\1" + 'nd ', address)
-    if newaddress == address and address.find('3 ') > 2:
-        pattern = re.compile('  ([0-9]*3) ', re.IGNORECASE)
-        newaddress = re.sub(pattern, " " + "\1" + 'rd ', address)
+    # splits the address into space delimited tokens and review the second and third ones
+    parts = address.split(' ')
+    if len(parts) > 1 and parts[1].isdigit():
+        parts[1] = ordinal(parts[1])
+    elif len(parts) > 2 and parts[2].isdigit():
+        parts[2] = ordinal(parts[2])
 
-    return address
+    newaddress = ' '.join(parts)
+    return newaddress
 
 def cardinal_number(address):
     # convert from first to 1st and visa versa
@@ -566,8 +564,7 @@ def strip_grammar(address):
     address = re.sub(r'&',  ' and ',  address)
     address = re.sub(r'/',  ' and ',  address)
     
-    # NYC has hyphenated addresses and range addresses
-    #address = re.sub(r'-',  ' and ',  address)
+    address = re.sub(r'-',  ' and ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  '',  address)
 
@@ -578,8 +575,7 @@ def pad_grammar(address):
     address = re.sub(r'&',  ' & ',  address)
     address = re.sub(r'/',  ' / ',  address)
 
-    # NYC has hyphenated addresses and range addresses
-    #address = re.sub(r'-',  ' - ',  address)
+    address = re.sub(r'-',  ' - ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  ' ',  address)
 
@@ -1126,7 +1122,7 @@ def neighbodhood_polys(nbhd_tbl, typeDesc, typeName):
             st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
             st_asgeojson(a.geometry) as geometry
             FROM
-                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
+                (SELECT ntaname, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
                     FROM %s t
                     WHERE st_npoints(geometry) > 3)  a""" %(nbhd_tbl))
         logger.debug('  collected %d names from %s' %(cursor.rowcount, nbhd_tbl))
