@@ -18,7 +18,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s - %(message)s
 ## elasticsearch uses lowercased names
 # set the index name to build
 # we use an alias to connect the index to the webserver
-IDXNAME = os.environ.get('ES_Index','geony_qt')
+IDXNAME = os.environ.get('ES_Index','geony_qta')
 OutputDir="./data/"
 
 RUNLIVE = False
@@ -57,7 +57,10 @@ if not DB_PORT:
 if DB_NAME:
     logger.info("using DB_NAME from environment vars")
 
-TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
+if DB_SCHEMA.index('_') > 1:
+    TEMP_SCHEMA = "temp_" + DB_SCHEMA.split('_')[1]
+else:
+    TEMP_SCHEMA = "temp"
 
 #Set DB connection info
 logger.info('writing to database "%s" in instance "%s"', DB_NAME, DB_INSTANCE)
@@ -381,53 +384,79 @@ def set_market_mapping(mapname):
 
 def number_cardinal(address):
     # convert from first to 1st and visa versa
-    address = re.sub(r' FIRST ',  ' 1ST ',  address)
-    address = re.sub(r' SECOND ',  ' 2ND ',  address)
-    address = re.sub(r' THIRD ',  ' 3RD ',  address)
-    address = re.sub(r' FOURTH ',  ' 4TH ',  address)
-    address = re.sub(r' FIFTH ',  ' 5TH ',  address)
-    address = re.sub(r' SIXTH ',  ' 6TH ',  address)
-    address = re.sub(r' SEVENTH ',  ' 7TH ',  address)
-    address = re.sub(r' EIGHTH ',  ' 8TH ',  address)
-    address = re.sub(r' NINTH ',  ' 9TH ',  address)
-    address = re.sub(r' TENTH ',  ' 10TH ',  address)
-    address = re.sub(r' ELEVENTH ',  ' 11TH ',  address)
-    address = re.sub(r' TWELFTH ',  ' 12TH ',  address)
-    address = re.sub(r' THIRTEENTH ',  ' 13TH ',  address)
-    address = re.sub(r' FOURTEENTH ',  ' 14TH ',  address)
-    address = re.sub(r' FIFTEENTH ',  ' 15TH ',  address)
-    address = re.sub(r' SIXTEENTH ',  ' 16TH ',  address)
-    address = re.sub(r' SEVENEENTH ',  ' 17TH ',  address)
-    address = re.sub(r' EIGTHTEENTH ',  ' 18TH ',  address)
-    address = re.sub(r' NINTEENTH ',  ' 19TH ',  address)
-    address = re.sub(r' TWENTIETH ',  ' 20TH ',  address)
-    address = re.sub(r' TWENTY FIRST ',  ' 24TH ',  address)
+    address = re.sub(r' FIRST ',  ' 1ST ',  address, flags=re.I)
+    address = re.sub(r' SECOND ',  ' 2ND ',  address, flags=re.I)
+    address = re.sub(r' THIRD ',  ' 3RD ',  address, flags=re.I)
+    address = re.sub(r' FOURTH ',  ' 4TH ',  address, flags=re.I)
+    address = re.sub(r' FIFTH ',  ' 5TH ',  address, flags=re.I)
+    address = re.sub(r' SIXTH ',  ' 6TH ',  address, flags=re.I)
+    address = re.sub(r' SEVENTH ',  ' 7TH ',  address, flags=re.I)
+    address = re.sub(r' EIGHTH ',  ' 8TH ',  address, flags=re.I)
+    address = re.sub(r' NINTH ',  ' 9TH ',  address, flags=re.I)
+    address = re.sub(r' TENTH ',  ' 10TH ',  address, flags=re.I)
+    address = re.sub(r' ELEVENTH ',  ' 11TH ',  address, flags=re.I)
+    address = re.sub(r' TWELFTH ',  ' 12TH ',  address, flags=re.I)
+    address = re.sub(r' THIRTEENTH ',  ' 13TH ',  address, flags=re.I)
+    address = re.sub(r' FOURTEENTH ',  ' 14TH ',  address, flags=re.I)
+    address = re.sub(r' FIFTEENTH ',  ' 15TH ',  address, flags=re.I)
+    address = re.sub(r' SIXTEENTH ',  ' 16TH ',  address, flags=re.I)
+    address = re.sub(r' SEVENEENTH ',  ' 17TH ',  address, flags=re.I)
+    address = re.sub(r' EIGTHTEENTH ',  ' 18TH ',  address, flags=re.I)
+    address = re.sub(r' NINTEENTH ',  ' 19TH ',  address, flags=re.I)
+    address = re.sub(r' TWENTIETH ',  ' 20TH ',  address, flags=re.I)
+    address = re.sub(r' TWENTY FIRST ',  ' 21ST ',  address, flags=re.I)
+    address = re.sub(r' TWENTY FOURTH ',  ' 24TH ',  address, flags=re.I)
+
+    return address
+
+def naked_cardinal(address):
+    # convert from 1 to 1st
+    newaddress = address
+    
+    pattern = re.compile('  ([0-9]*[04-9]) ', re.IGNORECASE)
+    newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
+    
+    # 11th 12th 13th
+    if newaddress == address and address.find('1 ') > 2:
+        pattern = re.compile('  ([0-9]*1[0-9]) ', re.IGNORECASE)
+        newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
+        
+    #  1st, 2nd, 3rd
+    if newaddress == address and address.find('1 ') > 2:
+        pattern = re.compile('  ([0-9]*1) ', re.IGNORECASE)
+        newaddress = re.sub(pattern, " " + "\1" + 'th ', address)
+    if newaddress == address and address.find('2 ') > 2:
+        pattern = re.compile('  ([0-9]*2) ', re.IGNORECASE)
+        newaddress = re.sub(pattern, " " + "\1" + 'nd ', address)
+    if newaddress == address and address.find('3 ') > 2:
+        pattern = re.compile('  ([0-9]*3) ', re.IGNORECASE)
+        newaddress = re.sub(pattern, " " + "\1" + 'rd ', address)
 
     return address
 
 def cardinal_number(address):
     # convert from first to 1st and visa versa
-    address = re.sub(r' 1ST ', ' FIRST ', address)
-    address = re.sub(r' 2ND ',  ' SECOND ',  address)
-    address = re.sub(r' 3RD ',  ' THIRD ',  address)
-    address = re.sub(r' 4TH ',  ' FOURTH ',  address)
-    address = re.sub(r' 5TH ',  ' FIFTH ',  address)
-    address = re.sub(r' 6TH ',  ' SIXTH ',  address)
-    address = re.sub(r' 7TH ',  ' SEVENTH ',  address)
-    address = re.sub(r' 8TH ',  ' EIGHTH ',  address)
-    address = re.sub(r' 9TH ',  ' NINTH ',  address)
-    address = re.sub(r' 10TH ', ' TENTH ',  address)
-    address = re.sub(r' 11TH ', ' ELEVENTH ',  address)
-    address = re.sub(r' 12TH ', ' TWELFTH ',  address)
-    address = re.sub(r' 13TH ', ' THIRTEENTH ',  address)
-    address = re.sub(r' 14TH ', ' FOURTEENTH ',  address)
-    address = re.sub(r' 15TH ', ' FIFTEENTH ',  address)
-    address = re.sub(r' 16TH ',  ' SIXTEENTH ',  address)
-    address = re.sub(r' 17TH ',  ' SEVENEENTH ',  address)
-    address = re.sub(r' 18TH ',  ' EIGTHTEENTH ',  address)
-    address = re.sub(r' 19TH ',  ' NINTEENTH ',  address)
-    address = re.sub(r' 20TH ',  ' TWENTIETH ',  address)
-    address = re.sub(r' 24TH ',  ' TWENTY FIRST ',  address)
+    address = re.sub(r' 1ST ', ' FIRST ', address, flags=re.I)
+    address = re.sub(r' 2ND ',  ' SECOND ',  address, flags=re.I)
+    address = re.sub(r' 3RD ',  ' THIRD ',  address, flags=re.I)
+    address = re.sub(r' 4TH ',  ' FOURTH ',  address, flags=re.I)
+    address = re.sub(r' 5TH ',  ' FIFTH ',  address, flags=re.I)
+    address = re.sub(r' 6TH ',  ' SIXTH ',  address, flags=re.I)
+    address = re.sub(r' 7TH ',  ' SEVENTH ',  address, flags=re.I)
+    address = re.sub(r' 8TH ',  ' EIGHTH ',  address, flags=re.I)
+    address = re.sub(r' 9TH ',  ' NINTH ',  address, flags=re.I)
+    address = re.sub(r' 10TH ', ' TENTH ',  address, flags=re.I)
+    address = re.sub(r' 11TH ', ' ELEVENTH ',  address, flags=re.I)
+    address = re.sub(r' 12TH ', ' TWELFTH ',  address, flags=re.I)
+    address = re.sub(r' 13TH ', ' THIRTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 14TH ', ' FOURTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 15TH ', ' FIFTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 16TH ',  ' SIXTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 17TH ',  ' SEVENEENTH ',  address, flags=re.I)
+    address = re.sub(r' 18TH ',  ' EIGTHTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 19TH ',  ' NINTEENTH ',  address, flags=re.I)
+    address = re.sub(r' 20TH ',  ' TWENTIETH ',  address, flags=re.I)
+    address = re.sub(r' 24TH ',  ' TWENTY FOURTH ',  address, flags=re.I)
 
     return address
 
@@ -536,7 +565,9 @@ def strip_grammar(address):
 
     address = re.sub(r'&',  ' and ',  address)
     address = re.sub(r'/',  ' and ',  address)
-    address = re.sub(r'-',  ' and ',  address)
+    
+    # NYC has hyphenated addresses and range addresses
+    #address = re.sub(r'-',  ' and ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  '',  address)
 
@@ -546,7 +577,9 @@ def pad_grammar(address):
 
     address = re.sub(r'&',  ' & ',  address)
     address = re.sub(r'/',  ' / ',  address)
-    address = re.sub(r'-',  ' - ',  address)
+
+    # NYC has hyphenated addresses and range addresses
+    #address = re.sub(r'-',  ' - ',  address)
     address = re.sub(r"'",  '',  address)
     address = re.sub(r"\.",  ' ',  address)
 
@@ -628,7 +661,12 @@ def alt_addresses(address):
     if (new_address != address):
         alts.append(new_address)
 
-    test_address = cardinal_number(address)
+    # attempt to convert 11 => 11th
+    new_address = naked_cardinal(address)
+    if (new_address != address):
+        alts.append(new_address)
+
+    new_address = cardinal_number(address)
     if (new_address != address):
         alts.append(new_address)
 
@@ -650,19 +688,13 @@ def alt_address(address, force):
     if ( new_address == address):
         new_address = re.sub(r' NEW YORK ',  ' NY ',  address)
 
-    if ( new_address == address):
-        new_address = re.sub(r'1707 7TH STREET NW',  'PARCEL 42',  address)
-    if ( new_address == address):
-        new_address = re.sub(r'CENTRAL BUSINESS DISTRICT',  'CBD',  address)
-
     # attempt to convert 11th => eleventh
-    test_address = number_cardinal(new_address)
-    if (test_address == new_address):
-        test_address = cardinal_number(new_address)
+    if (new_address == address):
+        new_address = number_cardinal(new_address)
 
     # unless we force it - only return a changed address
-    if (force or test_address != address):
-        return test_address
+    if (force or new_address != address):
+        return new_address
     else:
         return ""
 
@@ -1036,20 +1068,7 @@ def index_addresses(prm):
             cntr += 1
     pass
 
-def index_neighborhoods(prm):
-
-    nbhd_tbl = "temp_us3651000" + ".neighborhood_names"
-    if 'type' in prm:
-        typeName = prm['type']
-        typeDesc = prm['descr']
-    else:
-        assert 1>2,  "the 'type' must be declared"
-
-    logger.debug('''  Start ''' + typeName)
-    if 'reset' in prm and prm and prm['reset'] == True:
-        drop_index(IDXNAME, typeName)
-        set_neighborhood_mapping(typeName)
-
+def neighbodhood_pts(nbhd_tbl, typeDesc, typeName):
     cntr = 1
     with db_cursor() as cursor:
         cursor.execute("""SELECT 'NBHD:' || objectid::TEXT, a.name as name,
@@ -1064,6 +1083,7 @@ def index_neighborhoods(prm):
                 (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
                     FROM %s t
                     WHERE st_npoints(geometry) > 3)  a""" %(nbhd_tbl))
+        logger.debug('  collected %d names from %s' %(cursor.rowcount, nbhd_tbl))
         result = cursor.fetchall()
         for data in result:
             alts = alt_addresses(data[1].upper())
@@ -1093,6 +1113,72 @@ def index_neighborhoods(prm):
                 if (cntr % 5000) == 0:
                     time.sleep(0)
                 cntr += 1
+
+def neighbodhood_polys(nbhd_tbl, typeDesc, typeName):
+    cntr = 1
+    with db_cursor() as cursor:
+        cursor.execute("""SELECT 'NYNTA:' || objectid::TEXT, a.ntaname as name,
+            'NEW YORK' as city,
+            'NY' as state,
+            'NYNTA'::TEXT as domain, 0 as normative,
+            'G' as class,
+            st_asgeojson(st_expand(a.geometry, 0.000001)) as extent,
+            st_asgeojson(st_pointonsurface(st_cleangeometry(a.geometry))) as location,
+            st_asgeojson(a.geometry) as geometry
+            FROM
+                (SELECT name, objectid, st_simplifypreservetopology(geometry,0.00001) as geometry
+                    FROM %s t
+                    WHERE st_npoints(geometry) > 3)  a""" %(nbhd_tbl))
+        logger.debug('  collected %d names from %s' %(cursor.rowcount, nbhd_tbl))
+
+        result = cursor.fetchall()
+        for data in result:
+            alts = alt_addresses(data[1].upper())
+            for address_entry in alts:
+                # place padding around ,/-&. to make the combined bit indexable
+                address_entry = pad_grammar(address_entry)
+
+                address = {"id": data[0].strip(),
+                    "proper_address": data[1],
+                    "complete_address": address_entry,
+                    "core_address": core_address(address_entry),
+                    "super_core_address": super_core_address(address_entry),
+                    "alt_core_address": alt_address(super_core_address(address_entry), True),
+                    "city": data[2],
+                    "state": data[3],
+                    "zipcode": "(" + typeDesc + ")",
+                    "domain": data[4],
+                    "normative": int(data[5]),
+                    "class": data[6],
+                    "extentBBOX": json.loads(data[7]),
+                    "location": json.loads(data[8]),
+                    "neighborhood": data[1],
+                    "camera": {},
+                    "geometry": json.loads(data[9])
+                }
+                send_address(address, typeName)
+                if (cntr % 5000) == 0:
+                    time.sleep(0)
+                cntr += 1
+
+def index_neighborhoods(prm):
+
+    nbhd_point_tbl = "temp_us3651000" + ".neighborhood_names"
+    nbhd_tbl = "temp_us3651000" + ".nynta"
+
+    if 'type' in prm:
+        typeName = prm['type']
+        typeDesc = prm['descr']
+    else:
+        assert 1>2,  "the 'type' must be declared"
+
+    logger.debug('''  Start ''' + typeName)
+    if 'reset' in prm and prm and prm['reset'] == True:
+        drop_index(IDXNAME, typeName)
+        set_neighborhood_mapping(typeName)
+
+    neighbodhood_pts(nbhd_point_tbl, typeDesc, typeName)
+    neighbodhood_polys(nbhd_tbl, typeDesc, typeName)
 
     pass
 
