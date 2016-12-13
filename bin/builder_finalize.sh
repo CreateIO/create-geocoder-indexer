@@ -7,6 +7,7 @@ usage() {
   echo "builder_finalize.sh <pfx>"
 }
 
+pfx="$1"
 if [ -z "$pfx" ];then
   usage
   exit
