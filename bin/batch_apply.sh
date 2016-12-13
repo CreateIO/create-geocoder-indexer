@@ -60,6 +60,6 @@ curl -XPOST localhost:${ES_LOAD_PORT}/_aliases -d '
     ]
 }'
 
-curl -XGET localhost:${ES_LOAD_PORT}/_aliases
+curl -XGET localhost:${ES_LOAD_PORT}/_aliases | json_pp
 
 
